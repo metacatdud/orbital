@@ -1,2 +1,5 @@
 # orbital
-Open source and simplified k8s and nomad alternative
+
+---
+
+Open source and simplified orchestration for containers
