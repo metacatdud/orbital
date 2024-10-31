@@ -27,11 +27,11 @@ func (pk *PublicKey) String() string {
 
 func (pk *PublicKey) ToSSH() string {
 	const sshHeader = "ssh-ed25519"
-	
+
 	buf := new(bytes.Buffer)
 	writeBytesToBuffer(buf, []byte(sshHeader))
 	writeBytesToBuffer(buf, pk.key[:])
-	
+
 	return strings.Join([]string{
 		sshHeader,
 		base64.StdEncoding.EncodeToString(buf.Bytes()),
@@ -43,13 +43,13 @@ func NewPublicKeyFromString(publicKeyHex string) (*PublicKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if len(publicKeyBytes) != ed25519.PublicKeySize {
 		return nil, fmt.Errorf("%w:[%d]", ErrPublickeySize, len(publicKeyBytes))
 	}
-	
+
 	pubKey := ed25519.PublicKey(publicKeyBytes)
-	
+
 	return &PublicKey{key: pubKey}, nil
 }
 
@@ -62,7 +62,7 @@ type PrivateKey struct {
 func (privateKey *PrivateKey) PublicKey() *PublicKey {
 	privateKeyGen := ed25519.NewKeyFromSeed(privateKey.seed)
 	pubKey := privateKeyGen.Public().(ed25519.PublicKey)
-	
+
 	return &PublicKey{key: pubKey}
 }
 
@@ -80,16 +80,16 @@ func GenerateKeysPair() (*PublicKey, *PrivateKey, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	
+
 	// Create nonce for PrivateKey
 	var nonce [32]byte
 	_, err = rand.Read(nonce[:])
 	if err != nil {
 		return nil, nil, err
 	}
-	
+
 	publicKey := privateKey.PublicKey()
-	
+
 	return publicKey, &PrivateKey{seed: privateKey.Bytes(), nonce: nonce}, nil
 }
 
@@ -98,14 +98,14 @@ func NewPrivateKeyFromSeed(seed []byte) (*PrivateKey, error) {
 	if len(seed) != ed25519.SeedSize {
 		return nil, fmt.Errorf("%w:[%d]", ErrSeedSize, len(seed))
 	}
-	
+
 	// Create nonce for PrivateKey
 	var nonce [32]byte
 	_, err := rand.Read(nonce[:])
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &PrivateKey{seed: seed, nonce: nonce}, nil
 }
 
@@ -115,6 +115,6 @@ func NewPrivateKey() (*PrivateKey, error) {
 	if _, err := rand.Read(seed); err != nil {
 		return nil, err
 	}
-	
+
 	return NewPrivateKeyFromSeed(seed)
 }
