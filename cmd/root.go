@@ -21,7 +21,7 @@ func Execute() error {
 }
 
 func cmdHeader(section string) {
-	prompt.Bold(prompt.ColorWhite, prompt.NewLine("Orbital - %s"), section)
+	prompt.Bold(prompt.ColorWhite, prompt.NewLine("Orbital |- %s"), section)
 	prompt.Info(prompt.NewLine("----------------------------------------------------------------"))
 	fmt.Println()
 }
