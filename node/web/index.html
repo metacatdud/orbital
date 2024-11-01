@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Orbital</title>
+    <link rel="stylesheet" href="orbital.css">
+</head>
+<body>
+    <div id="root"></div>
+    <div id="status">Loading...</div>
+
+    <script src="wasm_exec.js"></script>
+    <script>
+        if(!("WebAssembly" in window)) {
+            document.getElementById("loading-message").innerText = "WebAssembly is not supported in this browser.";
+        } else {
+            const go = new Go();
+            WebAssembly.instantiateStreaming(fetch("orbital.wasm"), go.importObject)
+                .then(result => {
+                    go.run(result.instance);
+                    document.getElementById("status").style.display = "none";
+                })
+                .catch(err => {
+                    console.error("Failed to load WebAssembly:", err);
+                    document.getElementById("status").textContent = "Failed to load WebAssembly.";
+                });
+        }
+    </script>
+</body>
+</html>
