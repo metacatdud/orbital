@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/spf13/cobra"
 	"net"
 	"orbital/config"
 	"orbital/pkg/cryptographer"
@@ -14,6 +13,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/spf13/cobra"
 )
 
 // Errors
@@ -44,7 +45,7 @@ var initCmd = &cobra.Command{
 			return errors.New("secret key, ip and datapath cannot be empty")
 		}
 
-		if err := validateSecretKeyEd25519(secretKey); err != nil {
+		if err := validateEd25519SecretKey(secretKey); err != nil {
 			return err
 		}
 
@@ -66,6 +67,10 @@ var initCmd = &cobra.Command{
 				Address:         address,
 				Port:            port,
 			}
+		}
+
+		if err := createDataDir(dataPath); err != nil {
+			return err
 		}
 
 		orbitalCfg := config.Config{
@@ -136,8 +141,16 @@ func init() {
 	rootCmd.AddCommand(initCmd)
 }
 
-// validateSecretKeyEd25519 validates if provided key is ed25519 valid
-func validateSecretKeyEd25519(secretKeyHex string) error {
+func createDataDir(p string) error {
+	if _, err := os.Stat(p); os.IsNotExist(err) {
+		return os.MkdirAll(p, 0755)
+	}
+
+	return nil
+}
+
+// validateEd25519SecretKey validates if provided key is ed25519 valid
+func validateEd25519SecretKey(secretKeyHex string) error {
 	seedBytes, err := hex.DecodeString(secretKeyHex)
 	if err != nil || len(seedBytes) != ed25519.SeedSize {
 		return fmt.Errorf("%w:[secret: %s]", ErrInvalidEd25519Key, secretKeyHex)
