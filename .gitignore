@@ -10,3 +10,5 @@ go.work.sum
 .env
 .idea
 bin
+dashboard/tailwind/node_modules
+storage

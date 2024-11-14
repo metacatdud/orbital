@@ -1,3 +1,7 @@
+# Define WASM directories
+WASM_DIR := dashboard/wasm
+WASM_OUT := node/web/orbital.wasm
+WASM_EXEC := node/web/wasm_exec.js
 
 # Version Vars
 VERSION_TAG := $(shell git describe --tags --always)
@@ -67,40 +71,17 @@ build: ; $(info $(M) Building executable...) @ ## Build program binary
 		echo "$(M) Done!" ; \
 	done ; exit $$ret
 
-.PHONY: release
-release: ; $(info $(M) Buildig release version) @ ## Build OS specific release version
-	$Q rm -rf release
-	$Q mkdir -p release
-	$Q ret=0 && for os in darwin linux windows; do \
-		for arch in amd64 arm64; do \
-			binary_name="atomika_$${os}_$${arch}_${VERSION_TAG}" ; \
-			ext="" ; \
-			if [ "$$os" = "windows" ]; then ext=".exe"; fi ; \
-			GOOS=$$os GOARCH=$$arch $(GO) build ${LDFLAGS} ${GCFLAGS} -o release/$$binary_name$$ext || ret=$$? ; \
-			echo "$(M) Build: release/$$binary_name$$ext" ; \
-		done; \
-		if [ "$$os" = "windows" ]; then \
-			if which zip >/dev/null 2>&1; then \
-				echo "$(M) Archiving release files for $$os using zip..." ; \
-				zip -j release/atomika_$${os}_${VERSION_TAG}.zip release/atomika_$${os}_*_$${VERSION_TAG}* ; \
-				echo "$(M) Archive created: release/atomika_$${os}_${VERSION_TAG}.zip" ; \
-			else \
-				echo "$(M) Zip command not found, skipping archive for windows." ; \
-			fi; \
-		else \
-			echo "$(M) Archiving release files for $$os using tar..." ; \
-			find release -name "atomika_$${os}_*_${VERSION_TAG}*" -print | xargs tar -czf release/atomika_$${os}_${VERSION_TAG}.tar.gz || ret=$$? ; \
-			echo "$(M) Archive created: release/atomika_$${os}_${VERSION_TAG}.tar.gz" ; \
-		fi; \
-		echo "$(M) Cleaning up binary files for $$os..." ; \
-		find release -name "atomika_$${os}_*_${VERSION_TAG}*" -type f -not -name "*.zip" -not -name "*.tar.gz" -exec rm {} \; ; \
-	done; exit $$ret
-
 .PHONY: run
 run: ; $(info $(M) Running dev build (on the fly) ...) @ ## Run intermediate builds
 	$Q $(GO) run -race ./...
 
+# WASM Compilation
+.PHONY: wasm
+wasm: ; $(info $(M) Compiling WASM dashboard ...) @
+	GOOS=js GOARCH=wasm $(GO) build -o $(WASM_OUT) $(WASM_DIR)/main.go
+	cp "$(shell go env GOROOT)/misc/wasm/wasm_exec.js" $(WASM_EXEC)
+
 help:
-	$Q echo "\nAtomika.io\n----------------"
+	$Q echo "\Orbital makefile\n----------------"
 	$Q grep -E '^[ a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'

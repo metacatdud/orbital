@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Orbital</title>
+    <link rel="stylesheet" href="orbital.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
+          integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
+          crossorigin="anonymous" referrerpolicy="no-referrer"/>
+</head>
+<body>
+
+<div id="loading" class="flex items-center justify-center h-screen bg-gray-100">
+    <div class="text-center">
+        <i class="fas fa-spinner fa-spin text-4xl text-blue-500"></i>
+        <p class="mt-4 text-gray-700">Loading...</p>
+    </div>
+</div>
+
+<!--Main App placeholder -->
+<main id="app" style="display: none"></main>
+
+<script src="wasm_exec.js"></script>
+<script>
+    async function runWasm() {
+        const go = new Go();
+        try {
+            const wasm = await WebAssembly.instantiateStreaming(fetch("orbital.wasm"), go.importObject);
+            go.run(wasm.instance);
+
+            if (typeof bootstrapApp === "function") {
+                console.log("Bootstrapping app")
+                bootstrapApp();
+            }
+        } catch (error) {
+            console.error("Failed to load WASM:", error);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', runWasm)
+</script>
+</body>
+</html>
