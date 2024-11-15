@@ -2,6 +2,7 @@ package dom
 
 import (
 	"fmt"
+	"strings"
 	"syscall/js"
 )
 
@@ -26,17 +27,17 @@ func AddModuleTemplate(id string, htmlBin []byte) error {
 	tmpNode.Set("dataset.id", id)
 
 	obj := tmpNode.Get("content").
-		Call("querySelectorAll", "div[data-template]")
+		Call("querySelectorAll", "[data-template]")
 
 	for i := 0; i < obj.Length(); i++ {
 		tpl := obj.Index(i)
-		templateID := tpl.Get("dataset").
+		tID := tpl.Get("dataset").
 			Get("template").
 			String()
 
 		el := &Element{
-			ID:         id + "/" + templateID,
-			Obj:        tpl.Get("firstElementChild"),
+			ID:         tplId(id, tID),
+			Obj:        tpl,
 			IsTemplate: true,
 		}
 
@@ -47,21 +48,21 @@ func AddModuleTemplate(id string, htmlBin []byte) error {
 }
 
 // GetTemplate retrieves and clones a specific template by ID
-func GetTemplate(id string, tplId ...string) (js.Value, error) {
+func GetTemplate(id string, templateId ...string) (js.Value, error) {
 
-	templateId := "default"
-	if len(tplId) > 0 {
-		templateId = tplId[0]
+	tID := "default"
+	if len(templateId) > 0 {
+		tID = templateId[0]
 	}
-
-	fulID := id + "/" + templateId
 
 	// Find the template in the templates list by ID
 	for _, tpl := range templates {
-
-		if tpl.ID == fulID {
+		if tpl.ID == tplId(id, tID) {
 			// Query and clone the template content
-			htmlNode := tpl.Obj.Call("cloneNode", true)
+			htmlNode := tpl.Obj.
+				Get("firstElementChild").
+				Call("cloneNode", true)
+
 			return htmlNode, nil
 		}
 	}
@@ -77,4 +78,8 @@ func exists(id string) bool {
 		}
 	}
 	return false
+}
+
+func tplId(moduleID, tplID string) string {
+	return strings.Join([]string{moduleID, tplID}, "/")
 }

@@ -3,41 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <title>Orbital</title>
-    <link rel="stylesheet" href="orbital.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
           integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
           crossorigin="anonymous" referrerpolicy="no-referrer"/>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="orbital.css">
 </head>
+
 <body>
 
-<div id="loading" class="flex items-center justify-center h-screen bg-gray-100">
-    <div class="text-center">
-        <i class="fas fa-spinner fa-spin text-4xl text-blue-500"></i>
-        <p class="mt-4 text-gray-700">Loading...</p>
+    <div id="loading">
+        <div>
+            <div class="spinner"></div>
+            <p class="loading-text">Loading ...</p>
+        </div>
     </div>
-</div>
 
-<!--Main App placeholder -->
-<main id="app" style="display: none"></main>
+    <!--Main App placeholder -->
+    <main id="app"></main>
 
-<script src="wasm_exec.js"></script>
-<script>
-    async function runWasm() {
-        const go = new Go();
-        try {
-            const wasm = await WebAssembly.instantiateStreaming(fetch("orbital.wasm"), go.importObject);
-            go.run(wasm.instance);
+    <script src="wasm_exec.js"></script>
+    <script>
+        async function runWasm() {
+            const go = new Go();
+            try {
+                const wasm = await WebAssembly.instantiateStreaming(fetch("orbital.wasm"), go.importObject);
+                go.run(wasm.instance);
 
-            if (typeof bootstrapApp === "function") {
-                console.log("Bootstrapping app")
-                bootstrapApp();
+                if (typeof bootstrapApp === "function") {
+                    setTimeout(bootstrapApp, 1000)
+
+                }
+            } catch (error) {
+                console.error("Failed to load WASM:", error);
             }
-        } catch (error) {
-            console.error("Failed to load WASM:", error);
         }
-    }
 
-    document.addEventListener('DOMContentLoaded', runWasm)
-</script>
+        document.addEventListener('DOMContentLoaded', runWasm)
+    </script>
 </body>
 </html>
