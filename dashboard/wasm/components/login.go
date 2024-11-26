@@ -2,34 +2,64 @@ package components
 
 import (
 	"fmt"
-
-	"github.com/maxence-charriere/go-app/v10/pkg/app"
+	"orbital/dashboard/wasm/dom"
+	"orbital/dashboard/wasm/events"
+	"orbital/dashboard/wasm/storage"
+	"syscall/js"
 )
 
-type Login struct {
-	app.Compo
+type LoginComponentDI struct {
+	Events  *events.Event
+	Storage storage.Storage
+}
+
+type LoginComponent struct {
 	secretKey string
+	tplDir    string
+	events    *events.Event
+	store     storage.Storage
 }
 
-func (comp *Login) OnMount(ctx *app.Context) {
-
+func (c *LoginComponent) registerEvents() {
+	c.events.On("login.show", c.Show)
 }
 
-func (comp *Login) Render() app.UI {
-	return app.Div().Body(
-		app.H1().Text("Login"),
-		app.Input().
-			Type("password").
-			Value(comp.secretKey).
-			OnChange(comp.ValueTo(&comp.secretKey)),
-		app.Button().
-			Text("Login").
-			OnClick(comp.onLogin),
-	)
+func (c *LoginComponent) Show() {
+
+	fmt.Println("Login Component Show")
+
+	tplObj, err := dom.GetElement(c.tplDir, "main/default")
+	if err != nil {
+		dom.PrintToConsole(fmt.Sprintf("Error loading template: %s", err))
+		return
+	}
+	htmlEl := tplObj.CloneFromTemplate()
+
+	// Render the template
+	renderedElement, err := dom.RenderStatic(htmlEl.Obj, nil)
+	if err != nil {
+		fmt.Printf("Error rendering login template: %v\n", err)
+		return
+	}
+
+	loginBtn := renderedElement.Call("querySelector", "#login-button")
+	loginBtn.Call("addEventListener", "click", js.FuncOf(c.uiLoginAction))
+
+	c.events.Emit("app.render", renderedElement)
 }
 
-func (comp *Login) onLogin(ctx app.Context, e app.Event) {
-	fmt.Println("Clicked login 123")
-	ctx.NewActionWithValue("dummyHandler", "login")
-	fmt.Println("after dummy")
+func (c *LoginComponent) uiLoginAction(this js.Value, args []js.Value) interface{} {
+	input := dom.DocQuerySelectorValue("#public-key", "value")
+	fmt.Println("Validate:", input)
+	return nil
+}
+
+func NewLoginComponents(di LoginComponentDI) {
+	c := &LoginComponent{
+		events: di.Events,
+		store:  di.Storage,
+		tplDir: "login",
+	}
+
+	c.registerEvents()
 }

@@ -6,8 +6,8 @@ body {
   @apply bg-gray-50 text-gray-800 font-sans;
 }
 
-main {
-  @apply w-full max-w-lg bg-white shadow-md rounded-lg p-6 mx-auto;
+#app {
+  @apply w-full bg-white shadow-md rounded-lg p-6 mx-auto;
 
   &.hide {
     @apply hidden;

@@ -1,12 +1,14 @@
 package main
 
 import (
-	"bytes"
 	"embed"
 	"fmt"
-	"html/template"
 	"io/fs"
+	"orbital/dashboard/wasm/app"
+	"orbital/dashboard/wasm/components"
 	"orbital/dashboard/wasm/dom"
+	"orbital/dashboard/wasm/events"
+	"orbital/dashboard/wasm/storage"
 	"strings"
 	"syscall/js"
 )
@@ -29,34 +31,22 @@ func loadTemplates() {
 		}
 
 		if !d.IsDir() && strings.HasSuffix(path, ".html") {
-			var tmpl *template.Template
-			tmpl, err = template.ParseFS(templateFS, path)
+			var htmlBin []byte
+			htmlBin, err = templateFS.ReadFile(path)
 			if err != nil {
+				fmt.Printf("Error reading template %s: %v\n", path, err)
 				return err
 			}
-
-			// Render the template to a temporary <div> as js.Value
-			var buf bytes.Buffer
-			err = tmpl.Execute(&buf, nil)
-			if err != nil {
-				fmt.Printf("Error rendering template %s: %v\n", path, err)
-				return err
-			}
-
-			// Create a temporary <div> and set its HTML to the rendered content
-			//tempContainer := dom.Document().Obj.Call("createElement", "div")
-			//tempContainer.Set("innerHTML", buf.String())
 
 			// Register each <template data-template="..."> within this file
 			tmplName := strings.TrimPrefix(path, "templates/")
 			tmplName = strings.TrimSuffix(tmplName, ".html")
 
-			err = dom.AddModuleTemplate(tmplName, buf.Bytes())
+			err = dom.RegisterElement(tmplName, htmlBin)
 			if err != nil {
 				fmt.Printf("Error adding template %s: %v\n", path, err)
 			}
-
-			fmt.Printf("Loaded: %s\n", tmplName)
+			
 			return nil
 		}
 
@@ -69,21 +59,27 @@ func loadTemplates() {
 }
 
 // bootstrapApp load the entrypoint
-func bootstrapApp(this js.Value, args []js.Value) interface{} {
-	dom.Clear("#app")
+func bootstrapApp(_ js.Value, _ []js.Value) interface{} {
 
-	clonedContent, err := dom.GetTemplate("dashboard/main", "custom")
-	if err != nil {
-		fmt.Println("Cannot load template:", err.Error())
-		return nil
-	}
+	event := events.New()
+	store := storage.NewLocalStorage()
 
-	if clonedContent.Truthy() {
-		dom.AppendChild("#app", clonedContent)
-	}
+	orbital := app.NewApp(app.AppDI{
+		Events:  event,
+		Storage: store,
+	})
 
-	dom.Hide("#loading")
-	dom.Show("#app")
+	components.NewDashboardComponent(components.DashboardComponentDI{
+		Events:  event,
+		Storage: store,
+	})
+
+	components.NewLoginComponents(components.LoginComponentDI{
+		Events:  event,
+		Storage: store,
+	})
+
+	orbital.Boot()
 
 	return nil
 }

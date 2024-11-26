@@ -26,7 +26,7 @@ func init() {
 }
 
 // Callback represents a function for handling JavaScript events in Go
-type Callback func(js.Value, []js.Value) interface{}
+//type Callback func(js.Value, []js.Value) interface{}
 
 // Document returns the root document element
 func Document() *Element {
@@ -34,9 +34,9 @@ func Document() *Element {
 }
 
 // DOM returns the root DOM object
-func DOM() *Element {
-	return dom
-}
+//func DOM() *Element {
+//	return dom
+//}
 
 // DocQuerySelector selects an element from the document by CSS selector
 func DocQuerySelector(selector string) js.Value {
@@ -69,9 +69,9 @@ func Hide(selector string) {
 }
 
 // SetInnerHTML sets the inner HTML content of an element selected by CSS selector
-func SetInnerHTML(selector, html string) {
-	DocQuerySelector(selector).Set("innerHTML", html)
-}
+//func SetInnerHTML(selector, html string) {
+//	DocQuerySelector(selector).Set("innerHTML", html)
+//}
 
 // AppendChild appends a new child element to a target element specified by selector
 func AppendChild(parentSelector string, child js.Value) {
@@ -87,13 +87,13 @@ func Clear(selector string) {
 }
 
 // CloneTemplate clones a <template> element's content by its selector
-func CloneTemplate(selector string) js.Value {
-	tmpl := DocQuerySelector(selector)
-	if tmpl.Truthy() && tmpl.Get("content").Truthy() {
-		return tmpl.Get("content").Call("cloneNode", true)
-	}
-	return js.Null()
-}
+//func CloneTemplate(selector string) js.Value {
+//	tmpl := DocQuerySelector(selector)
+//	if tmpl.Truthy() && tmpl.Get("content").Truthy() {
+//		return tmpl.Get("content").Call("cloneNode", true)
+//	}
+//	return js.Null()
+//}
 
 func PrintToConsole(data interface{}) {
 	jsonData, err := json.Marshal(data)
