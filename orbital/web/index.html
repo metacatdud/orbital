@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-100">
+<head>
+    <meta charset="UTF-8">
+    <title>Orbital</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
+          integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
+          crossorigin="anonymous" referrerpolicy="no-referrer"/>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="orbital.css">
+</head>
+
+<body class="h-full">
+
+    <div class="min-h-full">
+        <header class="bg-white shadow">
+            <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+                <h1 class="text-3xl font-bold tracking-tight text-gray-900">Dashboard</h1>
+            </div>
+        </header>
+        <main>
+            <div id="loading">
+                <div>
+                    <div class="spinner"></div>
+                    <p class="loading-text">Loading ...</p>
+                </div>
+            </div>
+            <div id ="app"></div>
+        </main>
+    </div>
+
+    <script src="wasm_exec.js"></script>
+    <script>
+        async function runWasm() {
+            const go = new Go();
+            try {
+                const wasm = await WebAssembly.instantiateStreaming(fetch("orbital.wasm"), go.importObject);
+                go.run(wasm.instance);
+
+                if (typeof bootstrapApp === "function") {
+                    setTimeout(bootstrapApp, 1000)
+
+                }
+            } catch (error) {
+                console.error("Failed to load WASM:", error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', runWasm)
+    </script>
+</body>
+</html>
