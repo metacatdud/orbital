@@ -1,7 +1,7 @@
 # Define WASM directories
 WASM_DIR := dashboard/wasm
-WASM_OUT := node/web/orbital.wasm
-WASM_EXEC := node/web/wasm_exec.js
+WASM_OUT := orbital/web/orbital.wasm
+WASM_EXEC := orbital/web/wasm_exec.js
 
 # Version Vars
 VERSION_TAG := $(shell git describe --tags --always)
