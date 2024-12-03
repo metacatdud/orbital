@@ -1,19 +1,30 @@
 package orbital
 
 import (
+	"crypto/tls"
 	"embed"
 	"errors"
 	"fmt"
 	"io/fs"
 	"net/http"
+	"orbital/logger"
 )
 
 //go:embed web/*
 var staticDir embed.FS
 
+type Config struct {
+	ApiServer       *Server
+	Ip              string
+	RootStoragePath string
+}
+
 type Node struct {
-	client    *http.Server
-	apiServer *Server
+	client      *http.Server
+	apiServer   *Server
+	ip          string
+	rootStorage string
+	log         *logger.Logger
 }
 
 func (n *Node) Start() error {
@@ -21,8 +32,9 @@ func (n *Node) Start() error {
 		return err
 	}
 
-	fmt.Println("Serving WASM dashboard at http://localhost:8080")
-	if err := n.client.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	n.log.Info("Serving Orbital dashboard", "addr", fmt.Sprintf("https://[%s]:8080", n.ip))
+
+	if err := n.client.ListenAndServeTLS("", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("failed to start HTTP server: %w", err)
 	}
 
@@ -41,42 +53,45 @@ func (n *Node) init() error {
 
 	handler := CORSMiddleware(mux)
 
-	//mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-	//
-	//	// Skip favicon requests
-	//	if strings.Contains(r.URL.Path, "favicon.ico") {
-	//		w.WriteHeader(http.StatusNoContent)
-	//		return
-	//	}
-	//
-	//	var data []byte
-	//
-	//	if r.URL.Path == "/" {
-	//
-	//		data, err = fs.ReadFile(staticFiles, "index.html")
-	//		if err != nil {
-	//			http.Error(w, "index.html not found", http.StatusNotFound)
-	//			return
-	//		}
-	//		w.Header().Set("Content-Type", "text/html")
-	//		w.Write(data)
-	//		return
-	//	}
-	//
-	//	// Otherwise, serve files from the embedded web folder
-	//	http.FileServer(http.FS(staticFiles)).ServeHTTP(w, r)
-	//})
+	tlsCfg, err := tlsConfig(n.rootStorage)
+	if err != nil {
+		return err
+	}
 
 	n.client = &http.Server{
-		Addr:    ":8080",
-		Handler: handler,
+		Addr:      fmt.Sprintf("[%s]:8080", n.ip),
+		Handler:   handler,
+		TLSConfig: tlsCfg,
 	}
 
 	return nil
 }
 
-func New(apiServer *Server) *Node {
+func New(cfg Config) *Node {
+	lg := logger.New(logger.LevelDebug, logger.FormatString)
+
 	return &Node{
-		apiServer: apiServer,
+		apiServer:   cfg.ApiServer,
+		ip:          cfg.Ip,
+		rootStorage: cfg.RootStoragePath,
+		log:         lg,
 	}
+}
+
+func tlsConfig(dataPath string) (*tls.Config, error) {
+	certFile := fmt.Sprintf("%s/server.crt", dataPath)
+	keyFile := fmt.Sprintf("%s/server.key", dataPath)
+
+	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load certificates: %v", err)
+	}
+
+	// Configure TLS
+	tlsCfg := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		MinVersion:   tls.VersionTLS12,
+	}
+
+	return tlsCfg, nil
 }

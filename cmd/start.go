@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"orbital/config"
 	"orbital/internal/auth"
 	"orbital/orbital"
 )
@@ -12,9 +13,20 @@ var startCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmdHeader("start")
 
+		cfg, err := config.LoadConfig("/etc/orbital/config.yaml")
+		if err != nil {
+			return err
+		}
+
 		apiSrv := setupAPIServer()
 
-		orbitalNode := orbital.New(apiSrv)
+		orbitalCfg := orbital.Config{
+			ApiServer:       apiSrv,
+			Ip:              cfg.BindIP,
+			RootStoragePath: cfg.Datapath,
+		}
+
+		orbitalNode := orbital.New(orbitalCfg)
 		if err := orbitalNode.Start(); err != nil {
 			return err
 		}
