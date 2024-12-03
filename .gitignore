@@ -11,4 +11,5 @@ go.work.sum
 .idea
 bin
 dashboard/tailwind/node_modules
+orbital/web/*
 storage

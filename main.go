@@ -13,8 +13,8 @@ func main() {
 	}
 }
 
-// TODO: Onboard: Admin Public key, storage path, http and server ports
 // TODO: Instantiate an manager with HTTP
+// TODO: Onboard: Admin Public key, storage path, http and server ports
 // TODO: Instantiate a SQLite handler
 // TODO: Initiate a member list node
 // TODO: Get machine's available resources
