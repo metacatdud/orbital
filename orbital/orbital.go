@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
-	"orbital/logger"
+	"orbital/pkg/logger"
 )
 
 //go:embed web/*

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"orbital/logger"
+	"orbital/pkg/logger"
 	"path"
 	"strings"
 )
