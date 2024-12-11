@@ -7,19 +7,10 @@ import (
 	"path/filepath"
 )
 
-//type Client struct {
-//	IsClient        bool   `yaml:"isClient"`
-//	ServerPublicKey string `yaml:"serverPublicKey"`
-//	Protocol        string `yaml:"protocol"`
-//	Address         string `yaml:"server"`
-//	Port            string `yaml:"port"`
-//}
-
 type Config struct {
 	SecretKey string `yaml:"secretKey"`
 	BindIP    string `yaml:"bindIp"`
 	Datapath  string `yaml:"dataPath"`
-	//Client    Client `yaml:"client"`
 }
 
 // Validate config.
@@ -38,12 +29,6 @@ func (c *Config) Validate() error {
 	if c.Datapath == "" {
 		return fmt.Errorf("%w", ErrDataPathRequired)
 	}
-
-	//if c.Client.IsClient {
-	//	if c.Client.ServerPublicKey == "" || c.Client.Protocol == "" || c.Client.Address == "" || c.Client.Port == "" {
-	//		return fmt.Errorf("%w:[%s]", ErrConfigClient, "server address not set")
-	//	}
-	//}
 
 	return nil
 }
