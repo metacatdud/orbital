@@ -2,7 +2,6 @@ package agent
 
 type Network struct {
 	Name string
-	Type string
 }
 
 type Cmd struct {

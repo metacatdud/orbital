@@ -166,7 +166,6 @@ func (agent *Docker) GetContainer(id string) (*Container, error) {
 		Name:  c.Name[1:],
 		Network: Network{
 			Name: c.NetworkSettings.Networks["bridge"].NetworkID,
-			Type: "bridge",
 		},
 		Cmds:    convertCmdsFromString(c.Config.Cmd),
 		Ports:   ports,
