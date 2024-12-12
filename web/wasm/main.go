@@ -4,11 +4,11 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
-	"orbital/dashboard/wasm/app"
-	"orbital/dashboard/wasm/components"
-	"orbital/dashboard/wasm/dom"
-	"orbital/dashboard/wasm/events"
-	"orbital/dashboard/wasm/storage"
+	"orbital/web/wasm/app"
+	"orbital/web/wasm/components"
+	"orbital/web/wasm/dom"
+	"orbital/web/wasm/events"
+	"orbital/web/wasm/storage"
 	"strings"
 	"syscall/js"
 )
@@ -46,7 +46,7 @@ func loadTemplates() {
 			if err != nil {
 				fmt.Printf("Error adding template %s: %v\n", path, err)
 			}
-			
+
 			return nil
 		}
 
