@@ -3,9 +3,9 @@ package app
 import (
 	"encoding/json"
 	"fmt"
-	"orbital/dashboard/wasm/dom"
-	"orbital/dashboard/wasm/events"
-	"orbital/dashboard/wasm/storage"
+	"orbital/web/wasm/dom"
+	"orbital/web/wasm/events"
+	"orbital/web/wasm/storage"
 	"syscall/js"
 )
 
@@ -61,7 +61,7 @@ func (app *App) eventAppReady() {
 		//TODO: Validate to backend to
 		fmt.Printf("Validate backend: %+v\n", data)
 
-		app.events.Emit("navigate", "dashboard.show")
+		app.events.Emit("navigate", "web.show")
 		return
 	}
 

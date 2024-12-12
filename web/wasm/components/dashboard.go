@@ -2,9 +2,9 @@ package components
 
 import (
 	"fmt"
-	"orbital/dashboard/wasm/dom"
-	"orbital/dashboard/wasm/events"
-	"orbital/dashboard/wasm/storage"
+	"orbital/web/wasm/dom"
+	"orbital/web/wasm/events"
+	"orbital/web/wasm/storage"
 )
 
 type DashboardComponentDI struct {
@@ -19,7 +19,7 @@ type DashboardComponent struct {
 }
 
 func (c *DashboardComponent) registerEvents() {
-	c.events.On("dashboard.show", c.Show)
+	c.events.On("web.show", c.Show)
 }
 
 func (c *DashboardComponent) Show() {
@@ -45,7 +45,7 @@ func NewDashboardComponent(di DashboardComponentDI) {
 	c := &DashboardComponent{
 		events: di.Events,
 		store:  di.Storage,
-		tplDir: "dashboard",
+		tplDir: "web",
 	}
 
 	c.registerEvents()

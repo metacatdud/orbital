@@ -3,10 +3,10 @@ package components
 import (
 	"encoding/json"
 	"fmt"
-	"orbital/dashboard/wasm/api"
-	"orbital/dashboard/wasm/dom"
-	"orbital/dashboard/wasm/events"
-	"orbital/dashboard/wasm/storage"
+	"orbital/web/wasm/api"
+	"orbital/web/wasm/dom"
+	"orbital/web/wasm/events"
+	"orbital/web/wasm/storage"
 	"syscall/js"
 )
 
