@@ -7,35 +7,36 @@ import (
 	"orbital/orbital"
 )
 
-var startCmd = &cobra.Command{
-	Use:   "start",
-	Short: "start the node",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		cmdHeader("start")
+func newStartCmd() *cobra.Command {
 
-		cfg, err := config.LoadConfig("/etc/orbital/config.yaml")
-		if err != nil {
-			return err
-		}
+	startCmd := &cobra.Command{
+		Use:   "start",
+		Short: "start the node",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cmdHeader("start")
 
-		apiSrv := setupAPIServer()
+			cfg, err := config.LoadConfig("/etc/orbital/config.yaml")
+			if err != nil {
+				return err
+			}
 
-		orbitalCfg := orbital.Config{
-			ApiServer:       apiSrv,
-			Ip:              cfg.BindIP,
-			RootStoragePath: cfg.Datapath,
-		}
+			apiSrv := setupAPIServer()
 
-		orbitalNode := orbital.New(orbitalCfg)
-		if err := orbitalNode.Start(); err != nil {
-			return err
-		}
-		return nil
-	},
-}
+			orbitalCfg := orbital.Config{
+				ApiServer:       apiSrv,
+				Ip:              cfg.BindIP,
+				RootStoragePath: cfg.Datapath,
+			}
 
-func init() {
-	rootCmd.AddCommand(startCmd)
+			orbitalNode := orbital.New(orbitalCfg)
+			if err := orbitalNode.Start(); err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+
+	return startCmd
 }
 
 func setupAPIServer() *orbital.Server {
