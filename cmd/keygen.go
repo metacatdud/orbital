@@ -7,25 +7,26 @@ import (
 	"orbital/pkg/prompt"
 )
 
-var keygenCmd = &cobra.Command{
-	Use:   "keygen",
-	Short: "Generate a new private key",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		pk, sk, err := cryptographer.GenerateKeysPair()
-		if err != nil {
-			return err
-		}
+func newKeygenCmd() *cobra.Command {
 
-		cmdHeader("keygen")
+	keygenCmd := &cobra.Command{
+		Use:   "keygen",
+		Short: "Generate a new private key",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			pk, sk, err := cryptographer.GenerateKeysPair()
+			if err != nil {
+				return err
+			}
 
-		prompt.Err(prompt.NewLine("- Secret key: %s [DO NOT SHARE AND KEEP IT SAFE]"), sk.String())
-		prompt.Info(prompt.NewLine("- Public key: %s"), pk.String())
+			cmdHeader("keygen")
 
-		fmt.Println()
-		return nil
-	},
-}
+			prompt.Err(prompt.NewLine("- Secret key: %s [DO NOT SHARE AND KEEP IT SAFE]"), sk.String())
+			prompt.Info(prompt.NewLine("- Public key: %s"), pk.String())
 
-func init() {
-	rootCmd.AddCommand(keygenCmd)
+			fmt.Println()
+			return nil
+		},
+	}
+
+	return keygenCmd
 }

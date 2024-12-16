@@ -3,8 +3,13 @@ package cmd
 import (
 	"fmt"
 	"github.com/spf13/cobra"
+	"io/fs"
 	"orbital/pkg/prompt"
 )
+
+type Dependencies struct {
+	FS fs.FS
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "orbital",
@@ -12,7 +17,11 @@ var rootCmd = &cobra.Command{
 	Long:  "orbital is a container orchestration system without the bloat",
 }
 
-func Execute() error {
+func Execute(deps Dependencies) error {
+	rootCmd.AddCommand(newInitCmd(deps))
+	rootCmd.AddCommand(newKeygenCmd())
+	rootCmd.AddCommand(newStartCmd())
+	
 	if err := rootCmd.Execute(); err != nil {
 		return err
 	}
