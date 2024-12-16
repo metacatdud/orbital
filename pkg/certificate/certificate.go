@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"net"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -38,8 +39,8 @@ func GenerateCA(caPath string) (*x509.Certificate, *ecdsa.PrivateKey, error) {
 		return nil, nil, fmt.Errorf("failed to create CA certificate: %w", err)
 	}
 
-	certFile := fmt.Sprintf("%s/ca.crt", caPath)
-	keyFile := fmt.Sprintf("%s/ca.key", caPath)
+	certFile := filepath.Join(caPath, "ca.crt")
+	keyFile := filepath.Join(caPath, "ca.key")
 
 	if err = savePEMFile(certFile, "CERTIFICATE", certBytes); err != nil {
 		return nil, nil, fmt.Errorf("failed to save CA certificate: %w", err)
@@ -55,6 +56,45 @@ func GenerateCA(caPath string) (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	}
 
 	return caCert, privateKey, nil
+}
+
+func LoadCA(caPath string) (*x509.Certificate, *ecdsa.PrivateKey, error) {
+
+	certFile := filepath.Join(caPath, "ca.crt")
+	keyFile := filepath.Join(caPath, "ca.key")
+
+	certBytes, err := os.ReadFile(certFile)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read CA certificate file: %w", err)
+	}
+
+	certBlock, _ := pem.Decode(certBytes)
+	if certBlock == nil || certBlock.Type != "CERTIFICATE" {
+		return nil, nil, fmt.Errorf("failed to decode CA certificate")
+	}
+
+	caCert, err := x509.ParseCertificate(certBlock.Bytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse CA certificate: %w", err)
+	}
+
+	keyBytes, err := os.ReadFile(keyFile)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read CA private key file: %w", err)
+	}
+
+	// Decode the CA private key
+	keyBlock, _ := pem.Decode(keyBytes)
+	if keyBlock == nil || keyBlock.Type != "EC PRIVATE KEY" {
+		return nil, nil, fmt.Errorf("failed to decode CA private key")
+	}
+
+	caKey, err := x509.ParseECPrivateKey(keyBlock.Bytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse CA private key: %w", err)
+	}
+
+	return caCert, caKey, nil
 }
 
 func GenerateServerCert(caCert *x509.Certificate, caKey *ecdsa.PrivateKey, serverCertPath, ip string) error {
