@@ -2,12 +2,14 @@ package auth
 
 import (
 	"net/http"
+	"orbital/domain"
 	"orbital/orbital"
 )
 
 type helloServiceServer struct {
-	server  *orbital.Server
-	service AuthService
+	server   *orbital.Server
+	service  AuthService
+	userRepo domain.UserRepository
 }
 
 func RegisterHelloServiceServer(server *orbital.Server, service AuthService) {
