@@ -1,10 +1,14 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"orbital/cmd"
 	"os"
 )
+
+//go:embed resources/*
+var resourcesDir embed.FS
 
 func main() {
 	if err := run(); err != nil {
@@ -13,9 +17,7 @@ func main() {
 	}
 }
 
-// TODO: Instantiate an manager with HTTP
 // TODO: Onboard: Admin Public key, storage path, http and server ports
-// TODO: Instantiate a SQLite handler
 // TODO: Initiate a member list node
 // TODO: Get machine's available resources
 func run() error {
@@ -60,5 +62,7 @@ func run() error {
 	//
 	//fmt.Printf("containers:%+v\n", containers)
 
-	return cmd.Execute()
+	return cmd.Execute(cmd.Dependencies{
+		FS: resourcesDir,
+	})
 }

@@ -79,8 +79,8 @@ func New(cfg Config) *Node {
 }
 
 func tlsConfig(dataPath string) (*tls.Config, error) {
-	certFile := fmt.Sprintf("%s/server.crt", dataPath)
-	keyFile := fmt.Sprintf("%s/server.key", dataPath)
+	certFile := fmt.Sprintf("%s/orbital/certs/server.crt", dataPath)
+	keyFile := fmt.Sprintf("%s/orbital/certs/server.key", dataPath)
 
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
