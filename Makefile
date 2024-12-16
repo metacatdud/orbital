@@ -1,5 +1,5 @@
 # Define WASM directories
-WASM_DIR := dashboard/wasm
+WASM_DIR := web/wasm
 WASM_OUT := orbital/web/orbital.wasm
 WASM_EXEC := orbital/web/wasm_exec.js
 

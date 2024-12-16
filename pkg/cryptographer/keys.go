@@ -45,7 +45,7 @@ func NewPublicKeyFromString(publicKeyHex string) (*PublicKey, error) {
 	}
 
 	if len(publicKeyBytes) != ed25519.PublicKeySize {
-		return nil, fmt.Errorf("%w:[%d]", ErrPublickeySize, len(publicKeyBytes))
+		return nil, fmt.Errorf("%w:[%d]", ErrPublicKeySize, len(publicKeyBytes))
 	}
 
 	pubKey := ed25519.PublicKey(publicKeyBytes)
@@ -93,7 +93,7 @@ func GenerateKeysPair() (*PublicKey, *PrivateKey, error) {
 	return publicKey, &PrivateKey{seed: privateKey.Bytes(), nonce: nonce}, nil
 }
 
-// NewPrivateKeyFromSeed generates a new private key from a seed
+// NewPrivateKeyFromSeed creat a private key from a seed
 func NewPrivateKeyFromSeed(seed []byte) (*PrivateKey, error) {
 	if len(seed) != ed25519.SeedSize {
 		return nil, fmt.Errorf("%w:[%d]", ErrSeedSize, len(seed))
@@ -107,6 +107,16 @@ func NewPrivateKeyFromSeed(seed []byte) (*PrivateKey, error) {
 	}
 
 	return &PrivateKey{seed: seed, nonce: nonce}, nil
+}
+
+// NewPrivateKeyFromString creat a private key from a string
+func NewPrivateKeyFromString(privateKey string) (*PrivateKey, error) {
+	seed, err := hex.DecodeString(privateKey)
+	if err != nil || len(seed) != ed25519.SeedSize {
+		return nil, fmt.Errorf("%w:[secret: %s]", ErrInvalidKeySize, privateKey)
+	}
+
+	return NewPrivateKeyFromSeed(seed)
 }
 
 // NewPrivateKey generates a random seed key
