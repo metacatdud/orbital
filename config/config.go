@@ -16,7 +16,6 @@ type Config struct {
 // Validate config.
 // TODO: Better IP validation
 // TODO: Better DataPath validation
-// TODO: Better validate server connection string
 func (c *Config) Validate() error {
 	if len(c.SecretKey) != 64 {
 		return fmt.Errorf("%w:[len: %d]", ErrSecretKeyLength, len(c.SecretKey))
@@ -55,6 +54,10 @@ func (c *Config) Save(cfgPath string) error {
 	}
 
 	return nil
+}
+
+func (c *Config) OrbitalRootDir() string {
+	return filepath.Join(c.Datapath, "orbital")
 }
 
 func LoadConfig(cfgPath string) (*Config, error) {
