@@ -7,7 +7,7 @@ body {
 }
 
 #app {
-  @apply w-full bg-white shadow-md rounded-lg p-6 mx-auto;
+  @apply w-full bg-white shadow-md mx-auto;
 
   &.hide {
     @apply hidden;

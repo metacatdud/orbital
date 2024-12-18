@@ -25,12 +25,11 @@ type LoginComponent struct {
 
 func (c *LoginComponent) registerEvents() {
 	c.events.On("login.show", c.Show)
+	c.events.On("user.logon", c.UserLogon)
+	c.events.On("user.logout", c.UserLogout)
 }
 
 func (c *LoginComponent) Show() {
-
-	fmt.Println("Login Component Show")
-
 	tplObj, err := dom.GetElement(c.tplDir, "main/default")
 	if err != nil {
 		dom.PrintToConsole(fmt.Sprintf("Error loading template: %s", err))
@@ -45,17 +44,60 @@ func (c *LoginComponent) Show() {
 		return
 	}
 
-	loginBtn := renderedElement.Call("querySelector", "#login-button")
+	loginBtn := dom.ElementQuerySelect(renderedElement, "[data-action='login']")
 	loginBtn.Call("addEventListener", "click", js.FuncOf(c.uiLoginAction))
 
 	c.events.Emit("app.render", renderedElement)
 }
 
-func (c *LoginComponent) uiLoginAction(this js.Value, args []js.Value) interface{} {
-	input := dom.DocQuerySelectorValue("#public-key", "value")
+func (c *LoginComponent) UserLogon(u *User, errs map[string]string) {
+	errPlaceholder := dom.DocQuerySelector("#login-error")
+	errPlaceholder.Set("innerHTML", "")
 
-	req := map[string]string{
-		"publicKey": input.String(),
+	if u != nil {
+		dom.PrintToConsole(fmt.Sprintf("Login as: %s", u.Name))
+
+		if err := c.store.Set("auth", u); err != nil {
+			dom.PrintToConsole(fmt.Sprintf("Error storing auth data: %v", err))
+			return
+		}
+
+		c.events.Emit("navigate", "dashboard")
+		return
+	}
+
+	tplObj, err := dom.GetElement(c.tplDir, "main/error-msg")
+	if err != nil {
+		dom.PrintToConsole(fmt.Sprintf("Error loading template: %s", err))
+		return
+	}
+
+	for errTyp, errMsg := range errs {
+		htmlEl := tplObj.CloneFromTemplate()
+
+		htmlNode := dom.ElementQuerySelect(htmlEl.Obj, fmt.Sprintf("[data-errTyp='%s']", errTyp))
+		htmlNode.Set("textContent", errMsg)
+
+		dom.AppendChild("#login-error", htmlNode)
+	}
+
+	dom.Show("#login-error")
+}
+
+func (c *LoginComponent) UserLogout() {
+	if err := c.store.Del("auth"); err != nil {
+		dom.PrintToConsole(fmt.Sprintf("Error deleting auth data: %v", err))
+		return
+	}
+
+	c.Show()
+}
+
+func (c *LoginComponent) uiLoginAction(this js.Value, args []js.Value) interface{} {
+	input := dom.DocQuerySelectorValue("[data-input='privateKey']", "value")
+
+	req := &LoginReq{
+		PublicKey: input.String(),
 	}
 
 	reqBin, err := json.Marshal(req)
@@ -64,30 +106,21 @@ func (c *LoginComponent) uiLoginAction(this js.Value, args []js.Value) interface
 		return nil
 	}
 
-	resultChan := c.async.RunWithResult(func() (interface{}, error) {
+	c.async.Run(func() {
 		client := api.NewAPI("/rpc/AuthService/Auth")
-		res, err := client.Do(reqBin, nil)
+		var res []byte
+		res, err = client.Do(reqBin, nil)
 		if err != nil {
 			dom.PrintToConsole(fmt.Sprintf("Error calling HelloService: %v", err))
-			return nil, err
-		}
-
-		resMap := make(map[string]interface{})
-		_ = json.Unmarshal(res, &resMap)
-
-		fmt.Println("Response:", resMap)
-		return resMap, nil
-	})
-
-	go func() {
-		result := <-resultChan
-		if result.Err != nil {
-			fmt.Printf("Error validating public key: %v\n", result.Err)
 			return
 		}
 
-		fmt.Printf("Validation successful, response: %s\n", result.Value)
-	}()
+		resMap := &LoginResp{}
+		_ = json.Unmarshal(res, resMap)
+
+		c.events.Emit("user.logon", resMap.User, resMap.Err)
+		return
+	})
 
 	return nil
 }
@@ -101,4 +134,20 @@ func NewLoginComponents(di LoginComponentDI) {
 	}
 
 	c.registerEvents()
+}
+
+type User struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	PublicKey string `json:"publicKey"`
+	Access    string `json:"access"`
+}
+
+type LoginReq struct {
+	PublicKey string `json:"publicKey"`
+}
+
+type LoginResp struct {
+	User *User             `json:"user"`
+	Err  map[string]string `json:"error"`
 }

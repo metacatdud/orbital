@@ -2,18 +2,51 @@ package auth
 
 import (
 	"context"
-	"fmt"
+	"orbital/domain"
+	"orbital/pkg/cryptographer"
 )
 
-type Hello struct {
+type Dependencies struct {
+	UserRepo domain.UserRepository
 }
 
-func (service *Hello) Auth(ctx context.Context, req AuthReq) (AuthResp, error) {
+type Auth struct {
+	userRepo domain.UserRepository
+}
+
+func (service *Auth) Auth(ctx context.Context, req AuthReq) (AuthResp, error) {
+
+	sk, err := cryptographer.NewPrivateKeyFromString(req.SecretKey)
+	if err != nil {
+		return AuthResp{
+			Error: map[string]string{
+				"auth.invalid": "invalid secret key",
+			},
+		}, nil
+	}
+
+	publickKey := sk.PublicKey()
+	user, err := service.userRepo.FindByPublicKey(publickKey.String())
+	if err != nil {
+		return AuthResp{
+			Error: map[string]string{
+				"auth.notfound": "unknown secret key",
+			},
+		}, nil
+	}
+
 	return AuthResp{
-		Greet: fmt.Sprintf("Hello :%s", req.PublicKey),
+		User: &User{
+			ID:        user.ID,
+			Name:      user.Name,
+			PublicKey: publickKey.String(),
+			Access:    user.Access,
+		},
 	}, nil
 }
 
-func NewService() *Hello {
-	return &Hello{}
+func NewService(deps Dependencies) *Auth {
+	return &Auth{
+		userRepo: deps.UserRepo,
+	}
 }

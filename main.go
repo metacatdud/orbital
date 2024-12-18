@@ -17,9 +17,8 @@ func main() {
 	}
 }
 
-// TODO: Onboard: Admin Public key, storage path, http and server ports
-// TODO: Initiate a member list node
 // TODO: Get machine's available resources
+// TODO: Initiate a member list node
 func run() error {
 	//dockerAgent, err := agent.NewDocker()
 	//if err != nil {

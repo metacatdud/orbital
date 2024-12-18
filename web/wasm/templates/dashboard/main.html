@@ -1,7 +1,58 @@
 <div data-template="default">
-    <div id="dashboard" class="container">
-        <p>Hello World from Dashboard</p>
+    <div id="dashboard" class="flex h-screen bg-gray-200">
+
+        <!-- Sidebar -->
+        <div class="fixed inset-y-0 left-0 z-30 w-64 overflow-y-auto transition duration-300 transform bg-gray-900 lg:translate-x-0 lg:static lg:inset-0">
+            <div class="flex items-center justify-center mt-8">
+                <div class="flex items-center">
+                    <span class="mx-2 text-2xl font-semibold text-white">orbital</span>
+                </div>
+            </div>
+
+            <nav class="mt-10">
+                <span>nav</span>
+            </nav>
+        </div>
+
+        <!-- Main content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+
+            <!--  Header -->
+            <header class="flex items-center justify-between px-6 py-4 bg-white border-b-4">
+                <div class="flex items-center">
+                    <!-- Add open/close button here -->
+                    <!-- Add search here -->
+                </div>
+                <div class="flex items-center">
+                    <!-- Add notifications here -->
+                </div>
+
+                <div class="relative">
+                    <button data-action="toggleProfile" class="relative block w-8 h-8 overflow-hidden rounded-full shadow focus:outline-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512">
+                            <path d="M224 256A128 128 0 1 0 224 0a128 128 0 1 0 0 256zm-45.7 48C79.8 304 0 383.8 0 482.3C0 498.7 13.3 512 29.7 512l388.6 0c16.4 0 29.7-13.3 29.7-29.7C448 383.8 368.2 304 269.7 304l-91.4 0z"/>
+                        </svg>
+                    </button>
+
+                    <div data-id="avatarCloseOverlay" data-action="closeProfile" class="fixed inset-0 z-10 w-full h-full hidden"></div>
+                    <div data-id="avatarMenu" class="absolute right-0 z-10 w-48 mt-2 overflow-hidden bg-white rounded-md shadow-xl hidden">
+                        <a data-action="logout" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-900 hover:text-white hover:cursor-pointer">Logout</a>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content -->
+            <div class="flex-1 flex flex-col overflow-hidden">
+                <h3 class="text-gray-700 text-3xl font-medium">Dashboard</h3>
+
+                <div class="mt-4">
+                    Content goes here
+                </div>
+            </div>
+        </div>
     </div>
+
+
 </div>
 
 <div data-template="custom">
