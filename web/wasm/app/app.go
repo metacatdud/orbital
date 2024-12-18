@@ -1,7 +1,6 @@
 package app
 
 import (
-	"encoding/json"
 	"fmt"
 	"orbital/web/wasm/dom"
 	"orbital/web/wasm/events"
@@ -37,31 +36,23 @@ func (app *App) Render(htmlEl js.Value) {
 func (app *App) prepare() {
 	app.events.On("app.ready", app.eventAppReady)
 	app.events.On("navigate", app.eventAppNav)
-
 	app.events.On("app.render", func(tpl js.Value) {
-		fmt.Println("render node")
 		app.Render(tpl)
 	})
 }
 
 func (app *App) eventAppReady() {
 	if app.hasSession() {
-		var pubKey string
-		if err := app.storage.Get("publicKey", &pubKey); err != nil {
+		var authData map[string]string
+		if err := app.storage.Get("auth", &authData); err != nil {
 			dom.PrintToConsole("Failed to get public key")
 			return
 		}
 
-		data, err := json.Marshal(map[string]string{"pubKey": pubKey})
-		if err != nil {
-			dom.PrintToConsole("Failed to marshal public key")
-			return
-		}
-
 		//TODO: Validate to backend to
-		fmt.Printf("Validate backend: %+v\n", data)
+		fmt.Printf("Validate backend: %+v\n", authData)
 
-		app.events.Emit("navigate", "web.show")
+		app.events.Emit("dashboard.show")
 		return
 	}
 
@@ -80,13 +71,13 @@ func (app *App) eventAppNav(target string) {
 }
 
 func (app *App) hasSession() bool {
-	var publicKey string
-	err := app.storage.Get("publicKey", &publicKey)
+	var authData map[string]string
+	err := app.storage.Get("auth", &authData)
 	if err != nil {
 		return false
 	}
 
-	if publicKey == "" {
+	if _, ok := authData["publicKey"]; !ok {
 		return false
 	}
 

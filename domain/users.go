@@ -31,7 +31,7 @@ func (repo UserRepository) FindByID(id string) (*User, error) {
 	query := `SELECT id, name, pubkey, access FROM users WHERE id = ?`
 	row := repo.db.Client().QueryRow(query, id)
 	var user User
-	if err := row.Scan(&user.ID, &user.Name, &user.PubKey); err != nil {
+	if err := row.Scan(&user.ID, &user.Name, &user.PubKey, user.Access); err != nil {
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
 

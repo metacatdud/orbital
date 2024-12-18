@@ -86,15 +86,6 @@ func Clear(selector string) {
 	}
 }
 
-// CloneTemplate clones a <template> element's content by its selector
-//func CloneTemplate(selector string) js.Value {
-//	tmpl := DocQuerySelector(selector)
-//	if tmpl.Truthy() && tmpl.Get("content").Truthy() {
-//		return tmpl.Get("content").Call("cloneNode", true)
-//	}
-//	return js.Null()
-//}
-
 func PrintToConsole(data interface{}) {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
