@@ -55,7 +55,7 @@ func (c *LoginComponent) UserLogon(u *User, errs map[string]string) {
 	errPlaceholder.Set("innerHTML", "")
 
 	if u != nil {
-		dom.PrintToConsole(fmt.Sprintf("Login as: %s", u.Name))
+		dom.PrintToConsole("Login as:", u.Name, "Access", u.Access)
 
 		if err := c.store.Set("auth", u); err != nil {
 			dom.PrintToConsole(fmt.Sprintf("Error storing auth data: %v", err))
