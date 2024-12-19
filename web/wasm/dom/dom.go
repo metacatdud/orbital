@@ -2,7 +2,7 @@ package dom
 
 import (
 	"encoding/json"
-	"fmt"
+	"reflect"
 	"syscall/js"
 )
 
@@ -86,14 +86,27 @@ func Clear(selector string) {
 	}
 }
 
-func PrintToConsole(data interface{}) {
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		fmt.Println("Error marshalling to JSON:", err)
-		return
+func PrintToConsole(data ...interface{}) {
+
+	var processedArgs []interface{}
+
+	for _, d := range data {
+		switch v := d.(type) {
+		case string, bool, int, int32, int64, uint, uint32, uint64, float32, float64:
+			processedArgs = append(processedArgs, v)
+		default:
+			if reflect.TypeOf(d).Kind() == reflect.Struct || reflect.TypeOf(d).Kind() == reflect.Ptr {
+				jsonData, err := json.Marshal(v)
+				if err != nil {
+					processedArgs = append(processedArgs, "Error marshalling to JSON:", err.Error())
+				} else {
+					processedArgs = append(processedArgs, string(jsonData))
+				}
+				continue
+			}
+			processedArgs = append(processedArgs, "Unsupported type:", reflect.TypeOf(d).String())
+		}
 	}
 
-	// Parse JSON data into JavaScript object
-	jsObject := js.Global().Get("JSON").Call("parse", string(jsonData))
-	js.Global().Get("console").Call("log", jsObject)
+	js.Global().Get("console").Call("log", processedArgs...)
 }

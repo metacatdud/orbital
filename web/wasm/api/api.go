@@ -70,7 +70,6 @@ func (api *API) Do(data []byte, headers map[string]string) ([]byte, error) {
 		return nil, fmt.Errorf("unexpected response status code: %d, body: %s", response.StatusCode, body)
 	}
 
-	fmt.Printf("res: %s\n", string(body))
 	return body, nil
 }
 
