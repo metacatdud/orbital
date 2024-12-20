@@ -12,4 +12,5 @@ go.work.sum
 bin
 web/tailwind/node_modules
 orbital/web/*
-storage
+storage/
+!web/wasm/storage
