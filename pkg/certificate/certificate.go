@@ -97,7 +97,7 @@ func LoadCA(caPath string) (*x509.Certificate, *ecdsa.PrivateKey, error) {
 	return caCert, caKey, nil
 }
 
-func GenerateServerCert(caCert *x509.Certificate, caKey *ecdsa.PrivateKey, serverCertPath, ip string) error {
+func GenerateServerCert(caCert *x509.Certificate, caKey *ecdsa.PrivateKey, serverCertPath, ip string, domains ...string) error {
 	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return fmt.Errorf("failed to generate server private key: %w", err)
@@ -106,12 +106,15 @@ func GenerateServerCert(caCert *x509.Certificate, caKey *ecdsa.PrivateKey, serve
 	serverCert := &x509.Certificate{
 		SerialNumber: big.NewInt(2),
 		Subject: pkix.Name{
-			CommonName: ip,
+			Organization: []string{"Orbital OSS"},
+			CommonName:   ip,
 		},
-		NotBefore:   time.Now(),
-		NotAfter:    time.Now().Add(1 * 365 * 24 * time.Hour), // Available for 1 year
-		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		DNSNames:    domains,
 		IPAddresses: []net.IP{net.ParseIP(ip)},
+		NotBefore:   time.Now(),
+		NotAfter:    time.Now().AddDate(1, 0, 0), // Available for 1 year
+		KeyUsage:    x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 	}
 
 	certBytes, err := x509.CreateCertificate(rand.Reader, serverCert, caCert, privateKey.Public(), caKey)

@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"net/http"
 	"orbital/pkg/logger"
+	"strconv"
 )
 
 //go:embed web/*
@@ -16,6 +17,7 @@ var staticDir embed.FS
 type Config struct {
 	ApiServer       *Server
 	Ip              string
+	Port            int
 	RootStoragePath string
 }
 
@@ -23,6 +25,7 @@ type Node struct {
 	client      *http.Server
 	apiServer   *Server
 	ip          string
+	port        int
 	rootStorage string
 	log         *logger.Logger
 }
@@ -32,7 +35,7 @@ func (n *Node) Start() error {
 		return err
 	}
 
-	n.log.Info("Serving Orbital dashboard", "addr", fmt.Sprintf("https://[%s]:8080", n.ip))
+	n.log.Info("Serving Orbital dashboard", "addr", fmt.Sprintf("%s:%d", n.ip, n.port))
 
 	if err := n.client.ListenAndServeTLS("", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("failed to start HTTP server: %w", err)
@@ -59,7 +62,7 @@ func (n *Node) init() error {
 	}
 
 	n.client = &http.Server{
-		Addr:      fmt.Sprintf("[%s]:8080", n.ip),
+		Addr:      fmt.Sprintf("%s:%s", n.ip, strconv.Itoa(n.port)),
 		Handler:   handler,
 		TLSConfig: tlsCfg,
 	}
@@ -75,6 +78,7 @@ func New(cfg Config) *Node {
 		ip:          cfg.Ip,
 		rootStorage: cfg.RootStoragePath,
 		log:         lg,
+		port:        cfg.Port,
 	}
 }
 

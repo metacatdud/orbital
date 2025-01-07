@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"orbital/domain"
+	"orbital/orbital"
 	"orbital/pkg/cryptographer"
 )
 
@@ -19,16 +20,18 @@ func (service *Auth) Auth(ctx context.Context, req AuthReq) (AuthResp, error) {
 	sk, err := cryptographer.NewPrivateKeyFromString(req.SecretKey)
 	if err != nil {
 		return AuthResp{
+			Code: orbital.InvalidRequest,
 			Error: map[string]string{
 				"auth.invalid": "invalid secret key",
 			},
 		}, nil
 	}
 
-	publickKey := sk.PublicKey()
-	user, err := service.userRepo.FindByPublicKey(publickKey.String())
+	publicKey := sk.PublicKey()
+	user, err := service.userRepo.FindByPublicKey(publicKey.String())
 	if err != nil {
 		return AuthResp{
+			Code: orbital.NotFound,
 			Error: map[string]string{
 				"auth.notfound": "unknown secret key",
 			},
@@ -36,10 +39,11 @@ func (service *Auth) Auth(ctx context.Context, req AuthReq) (AuthResp, error) {
 	}
 
 	return AuthResp{
+		Code: orbital.OK,
 		User: &User{
 			ID:        user.ID,
 			Name:      user.Name,
-			PublicKey: publickKey.String(),
+			PublicKey: publicKey.String(),
 			Access:    user.Access,
 		},
 	}, nil
