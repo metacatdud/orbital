@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/spf13/cobra"
 	"orbital/config"
 	"orbital/domain"
@@ -32,8 +33,9 @@ func newStartCmd() *cobra.Command {
 
 			orbitalCfg := orbital.Config{
 				ApiServer:       apiSrv,
-				Ip:              cfg.BindIP,
+				Ip:              fmt.Sprintf("[%s]", cfg.BindIP),
 				RootStoragePath: cfg.Datapath,
+				Port:            8090,
 			}
 
 			orbitalNode := orbital.New(orbitalCfg)

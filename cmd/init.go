@@ -147,7 +147,7 @@ func newInitCmd(deps Dependencies) *cobra.Command {
 			}
 
 			serverCertsPath := filepath.Join(orbitalCfg.OrbitalRootDir(), "certs")
-			if err = certificate.GenerateServerCert(caCert, caKey, serverCertsPath, ip); err != nil {
+			if err = certificate.GenerateServerCert(caCert, caKey, serverCertsPath, ip, "orbital.local"); err != nil {
 				return err
 			}
 
@@ -274,7 +274,6 @@ func validateIp(ip string) error {
 }
 
 // updateDataDirFromResources will migrate database
-// TODO: use fs.WalkDir to go over embed.FS folders and files
 func updateDataDirFromResources(resDir fs.FS, orbitalCfg config.Config) error {
 
 	err := fs.WalkDir(resDir, "resources", func(path string, d fs.DirEntry, err error) error {

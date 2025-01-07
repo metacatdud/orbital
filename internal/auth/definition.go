@@ -1,6 +1,9 @@
 package auth
 
-import "context"
+import (
+	"context"
+	"orbital/orbital"
+)
 
 type AuthService interface {
 	Auth(ctx context.Context, req AuthReq) (AuthResp, error)
@@ -19,5 +22,6 @@ type User struct {
 
 type AuthResp struct {
 	User  *User             `json:"user"`
+	Code  orbital.Code      `json:"code"`
 	Error map[string]string `json:"error,omitempty"`
 }
