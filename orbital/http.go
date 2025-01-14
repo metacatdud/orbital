@@ -18,17 +18,23 @@ type Route struct {
 	Method      string
 }
 
+type HTTPService interface {
+	Register(route Route)
+	OnError(w http.ResponseWriter, r *http.Request, err error)
+}
+
 type Server struct {
 	log      *logger.Logger
 	routes   map[string]Route
 	notFound http.HandlerFunc
 	onError  func(w http.ResponseWriter, r *http.Request, err error)
+	wsConn   *WsConn
 }
 
 func (s *Server) Register(route Route) {
 	routePath := path.Clean(fmt.Sprintf("/rpc/%s/%s", route.ServiceName, route.ActionName))
-
-	if _, ok := s.routes[routePath]; ok {
+	s.log.Info("Register", "path", routePath)
+	if _, found := s.routes[routePath]; found {
 		s.log.Error("route not found", "route", route)
 		return
 	}
