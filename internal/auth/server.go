@@ -2,17 +2,15 @@ package auth
 
 import (
 	"net/http"
-	"orbital/domain"
 	"orbital/orbital"
 )
 
 type helloServiceServer struct {
-	server   *orbital.Server
-	service  AuthService
-	userRepo domain.UserRepository
+	server  orbital.HTTPService
+	service AuthService
 }
 
-func RegisterHelloServiceServer(server *orbital.Server, service AuthService) {
+func RegisterHelloServiceServer(server orbital.HTTPService, service AuthService) {
 	handler := &helloServiceServer{server: server, service: service}
 
 	server.Register(orbital.Route{

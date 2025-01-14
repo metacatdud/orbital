@@ -38,7 +38,6 @@ func loadTemplates() {
 				return err
 			}
 
-			// Register each <template data-template="..."> within this file
 			tmplName := strings.TrimPrefix(path, "templates/")
 			tmplName = strings.TrimSuffix(tmplName, ".html")
 
@@ -63,15 +62,18 @@ func bootstrapApp(_ js.Value, _ []js.Value) interface{} {
 
 	event := events.New()
 	store := storage.NewLocalStorage()
+	ws := app.NewWsConn(true)
 
 	orbital := app.NewApp(app.AppDI{
 		Events:  event,
 		Storage: store,
+		WsConn:  ws,
 	})
 
 	components.NewDashboardComponent(components.DashboardComponentDI{
 		Events:  event,
 		Storage: store,
+		WsConn:  ws,
 	})
 
 	components.NewLoginComponents(components.LoginComponentDI{

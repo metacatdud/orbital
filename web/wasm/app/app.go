@@ -2,20 +2,25 @@ package app
 
 import (
 	"fmt"
+	"orbital/pkg/cryptographer"
+	"orbital/web/wasm/api"
 	"orbital/web/wasm/dom"
 	"orbital/web/wasm/events"
 	"orbital/web/wasm/storage"
 	"syscall/js"
+	"time"
 )
 
 type AppDI struct {
 	Events  *events.Event
 	Storage storage.Storage
+	WsConn  *WsConn
 }
 
 type App struct {
 	storage storage.Storage
 	events  *events.Event
+	wsConn  *WsConn
 }
 
 func (app *App) Boot() {
@@ -34,10 +39,14 @@ func (app *App) Render(htmlEl js.Value) {
 }
 
 func (app *App) prepare() {
-	app.events.On("app.ready", app.eventAppReady)
+	app.events.Once("app.ready", app.eventAppReady)
 	app.events.On("navigate", app.eventAppNav)
 	app.events.On("app.render", func(tpl js.Value) {
 		app.Render(tpl)
+	})
+
+	app.wsConn.On("orbital.authentication", func(data []byte) {
+		fmt.Println("orbital.authentication:", string(data))
 	})
 }
 
@@ -52,7 +61,32 @@ func (app *App) eventAppReady() {
 		//TODO: Validate to backend to
 		fmt.Printf("Validate backend: %+v\n", authData)
 
+		// Initialize the websocket connection
 		app.events.Emit("dashboard.show")
+
+		//TODO: MOVE THIS SOMEPLACE ELSE
+
+		secretKy, err := cryptographer.NewPrivateKeyFromString("123")
+
+		if err != nil {
+			dom.PrintToConsole("Failed to convert Validate public key")
+			return
+		}
+
+		async := api.NewAsync()
+		async.Run(func() {
+			time.Sleep(1 * time.Second)
+			msg := NewTopicMessage("orbital.authentication", []byte(`{"requestMessage": "do.login"}`))
+			msg.PublicKey = secretKy.PublicKey().Compress()
+			if err = msg.Sign(secretKy.Bytes()); err != nil {
+				dom.PrintToConsole("Failed to sign message")
+				return
+			}
+
+			time.Sleep(1 * time.Second)
+			fmt.Println("[HACK-ish] Wait for connections")
+			app.wsConn.Send(*msg)
+		})
 		return
 	}
 
@@ -88,6 +122,7 @@ func NewApp(di AppDI) *App {
 	app := &App{
 		events:  di.Events,
 		storage: di.Storage,
+		wsConn:  di.WsConn,
 	}
 
 	app.prepare()

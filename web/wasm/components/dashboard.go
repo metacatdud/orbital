@@ -2,6 +2,8 @@ package components
 
 import (
 	"fmt"
+	"orbital/pkg/cryptographer"
+	"orbital/web/wasm/app"
 	"orbital/web/wasm/dom"
 	"orbital/web/wasm/events"
 	"orbital/web/wasm/storage"
@@ -11,12 +13,14 @@ import (
 type DashboardComponentDI struct {
 	Events  *events.Event
 	Storage storage.Storage
+	WsConn  *app.WsConn
 }
 
 type DashboardComponent struct {
-	tplDir string
-	events *events.Event
-	store  storage.Storage
+	tplDir  string
+	events  *events.Event
+	storage storage.Storage
+	wsConn  *app.WsConn
 }
 
 func (c *DashboardComponent) registerEvents() {
@@ -52,6 +56,26 @@ func (c *DashboardComponent) Show() {
 		return nil
 	}))
 
+	// test for websocket call
+	wsTestBtn := dom.ElementQuerySelect(renderedElement, "[data-action='wsTest']")
+	wsTestBtn.Call("addEventListener", "click", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		fmt.Println("---")
+		var authData map[string]string
+		if err = c.storage.Get("auth", &authData); err != nil {
+			dom.PrintToConsole("Failed to get public key")
+			return nil
+		}
+
+		publicKey, _ := cryptographer.NewPublicKeyFromString(authData["publicKey"])
+		fmt.Printf("publicKey (from string): %+v\n", publicKey.String())
+		//
+		msg := app.NewTopicMessage("dashboard.allData", []byte(`req.data`))
+		msg.PublicKey = publicKey.Compress()
+
+		c.wsConn.Send(*msg)
+		return nil
+	}))
+
 	c.events.Emit("app.render", renderedElement)
 }
 
@@ -75,9 +99,10 @@ func (c *DashboardComponent) uiToggleProfileClose(this js.Value, args []js.Value
 
 func NewDashboardComponent(di DashboardComponentDI) {
 	c := &DashboardComponent{
-		events: di.Events,
-		store:  di.Storage,
-		tplDir: "dashboard",
+		events:  di.Events,
+		storage: di.Storage,
+		tplDir:  "dashboard",
+		wsConn:  di.WsConn,
 	}
 
 	c.registerEvents()

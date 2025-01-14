@@ -7,8 +7,8 @@ import (
 )
 
 type Handler struct {
-	Callback interface{} // The handler function
-	Once     bool        // Whether the handler should be executed only once
+	Callback interface{}
+	Once     bool
 }
 
 type Event struct {

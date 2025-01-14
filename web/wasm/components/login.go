@@ -61,7 +61,7 @@ func (c *LoginComponent) UserLogon(u *User, errs map[string]string) {
 			dom.PrintToConsole(fmt.Sprintf("Error storing auth data: %v", err))
 			return
 		}
-
+		
 		c.events.Emit("navigate", "dashboard")
 		return
 	}
@@ -89,6 +89,10 @@ func (c *LoginComponent) UserLogout() {
 		dom.PrintToConsole(fmt.Sprintf("Error deleting auth data: %v", err))
 		return
 	}
+
+	// Close websocket on user logout
+	// TODO: Check if it does make sense as this socket is meant only for one user
+	c.events.Emit("ws.close")
 
 	c.Show()
 }
