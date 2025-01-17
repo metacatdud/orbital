@@ -21,7 +21,7 @@ func Execute(deps Dependencies) error {
 	rootCmd.AddCommand(newInitCmd(deps))
 	rootCmd.AddCommand(newKeygenCmd())
 	rootCmd.AddCommand(newStartCmd())
-	
+
 	if err := rootCmd.Execute(); err != nil {
 		return err
 	}

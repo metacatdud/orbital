@@ -6,6 +6,7 @@ import (
 	"orbital/config"
 	"orbital/domain"
 	"orbital/internal/auth"
+	"orbital/internal/dashboard"
 	"orbital/orbital"
 	"orbital/pkg/db"
 	"orbital/pkg/prompt"
@@ -25,7 +26,7 @@ func newStartCmd() *cobra.Command {
 				return err
 			}
 
-			apiSrv, err := setupAPIServer(cfg)
+			apiSrv, wsSrv, err := setupAPIServer(cfg)
 			if err != nil {
 				prompt.Err(prompt.NewLine("cannot start server: %s"), err.Error())
 				return err
@@ -33,9 +34,10 @@ func newStartCmd() *cobra.Command {
 
 			orbitalCfg := orbital.Config{
 				ApiServer:       apiSrv,
+				WsServer:        wsSrv,
 				Ip:              fmt.Sprintf("[%s]", cfg.BindIP),
 				RootStoragePath: cfg.Datapath,
-				Port:            8090,
+				Port:            8100,
 			}
 
 			orbitalNode := orbital.New(orbitalCfg)
@@ -49,12 +51,12 @@ func newStartCmd() *cobra.Command {
 	return startCmd
 }
 
-func setupAPIServer(cfg *config.Config) (*orbital.Server, error) {
+func setupAPIServer(cfg *config.Config) (*orbital.Server, *orbital.WsConn, error) {
 	dbPath := filepath.Join(cfg.OrbitalRootDir(), "data")
 
 	dbClient, err := db.NewDB(dbPath)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Dependencies
@@ -62,14 +64,19 @@ func setupAPIServer(cfg *config.Config) (*orbital.Server, error) {
 
 	// Prepare server
 	apiSrv := orbital.NewServer()
+	wsSrv := orbital.NewWsConn()
 
 	// Prepare services
 	authService := auth.NewService(auth.Dependencies{
 		UserRepo: userRepo,
+		Ws:       wsSrv,
 	})
 
-	// Register all services to apiServer
-	auth.RegisterHelloServiceServer(apiSrv, authService)
+	dashService := dashboard.NewService(nil)
 
-	return apiSrv, nil
+	// Register all services to apiServer
+	auth.RegisterHelloServiceServer(apiSrv, wsSrv, authService)
+	dashboard.RegisterDashboardServiceServer(apiSrv, wsSrv, dashService)
+
+	return apiSrv, wsSrv, nil
 }

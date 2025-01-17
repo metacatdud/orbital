@@ -4,9 +4,11 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"orbital/web/wasm/api"
 	"orbital/web/wasm/app"
 	"orbital/web/wasm/components"
 	"orbital/web/wasm/dom"
+	"orbital/web/wasm/domain"
 	"orbital/web/wasm/events"
 	"orbital/web/wasm/storage"
 	"strings"
@@ -38,7 +40,6 @@ func loadTemplates() {
 				return err
 			}
 
-			// Register each <template data-template="..."> within this file
 			tmplName := strings.TrimPrefix(path, "templates/")
 			tmplName = strings.TrimSuffix(tmplName, ".html")
 
@@ -63,20 +64,30 @@ func bootstrapApp(_ js.Value, _ []js.Value) interface{} {
 
 	event := events.New()
 	store := storage.NewLocalStorage()
+	ws := api.NewWsConn(true)
+
+	// Repositories
+	authRepo := domain.NewAuthRepository(store)
+	userRepo := domain.NewUserRepository(store)
 
 	orbital := app.NewApp(app.AppDI{
-		Events:  event,
-		Storage: store,
+		Events:   event,
+		WsConn:   ws,
+		AuthRepo: authRepo,
+		UserRepo: userRepo,
 	})
 
 	components.NewDashboardComponent(components.DashboardComponentDI{
-		Events:  event,
-		Storage: store,
+		Events:   event,
+		WsConn:   ws,
+		AuthRepo: authRepo,
+		UserRepo: userRepo,
 	})
 
 	components.NewLoginComponents(components.LoginComponentDI{
-		Events:  event,
-		Storage: store,
+		Events:   event,
+		AuthRepo: authRepo,
+		UserRepo: userRepo,
 	})
 
 	orbital.Boot()

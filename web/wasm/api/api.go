@@ -28,7 +28,6 @@ func NewAPI(basePath string) *API {
 
 func (api *API) Do(data []byte, headers map[string]string) ([]byte, error) {
 	req, err := http.NewRequest(http.MethodPost, api.urlPath, bytes.NewBuffer(data))
-	fmt.Println("Request URL:", api.urlPath)
 
 	if err != nil {
 		return nil, err

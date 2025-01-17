@@ -3,24 +3,28 @@ package components
 import (
 	"encoding/json"
 	"fmt"
+	"orbital/pkg/cryptographer"
+	"orbital/pkg/proto"
 	"orbital/web/wasm/api"
 	"orbital/web/wasm/dom"
+	"orbital/web/wasm/domain"
 	"orbital/web/wasm/events"
 	"orbital/web/wasm/storage"
 	"syscall/js"
 )
 
 type LoginComponentDI struct {
-	Events  *events.Event
-	Storage storage.Storage
+	Events   *events.Event
+	Storage  storage.Storage
+	AuthRepo domain.AuthRepository
+	UserRepo domain.UserRepository
 }
 
 type LoginComponent struct {
-	async     *api.Async
-	secretKey string
-	tplDir    string
-	events    *events.Event
-	store     storage.Storage
+	tplDir   string
+	events   *events.Event
+	authRepo domain.AuthRepository
+	userRepo domain.UserRepository
 }
 
 func (c *LoginComponent) registerEvents() {
@@ -50,14 +54,24 @@ func (c *LoginComponent) Show() {
 	c.events.Emit("app.render", renderedElement)
 }
 
-func (c *LoginComponent) UserLogon(u *User, errs map[string]string) {
+func (c *LoginComponent) UserLogon(u *User, secretKey string, errs map[string]string) {
 	errPlaceholder := dom.DocQuerySelector("#login-error")
 	errPlaceholder.Set("innerHTML", "")
 
 	if u != nil {
 		dom.PrintToConsole("Login as:", u.Name, "Access", u.Access)
 
-		if err := c.store.Set("auth", u); err != nil {
+		if err := c.authRepo.Save(domain.Auth{SecretKey: secretKey}); err != nil {
+			dom.PrintToConsole(fmt.Sprintf("Error saving login credentials: %v", err))
+		}
+
+		domainUser := domain.User{
+			ID:        u.ID,
+			Name:      u.Name,
+			PublicKey: u.PublicKey,
+			Access:    u.Access,
+		}
+		if err := c.userRepo.Save(domainUser); err != nil {
 			dom.PrintToConsole(fmt.Sprintf("Error storing auth data: %v", err))
 			return
 		}
@@ -85,7 +99,12 @@ func (c *LoginComponent) UserLogon(u *User, errs map[string]string) {
 }
 
 func (c *LoginComponent) UserLogout() {
-	if err := c.store.Del("auth"); err != nil {
+	if err := c.authRepo.Remove(); err != nil {
+		dom.PrintToConsole(fmt.Sprintf("Error removing auth data: %v", err))
+		return
+	}
+
+	if err := c.userRepo.Remove(); err != nil {
 		dom.PrintToConsole(fmt.Sprintf("Error deleting auth data: %v", err))
 		return
 	}
@@ -96,17 +115,42 @@ func (c *LoginComponent) UserLogout() {
 func (c *LoginComponent) uiLoginAction(this js.Value, args []js.Value) interface{} {
 	input := dom.DocQuerySelectorValue("[data-input='privateKey']", "value")
 
-	req := &LoginReq{
-		PublicKey: input.String(),
+	secretKey, err := cryptographer.NewPrivateKeyFromString(input.String())
+	if err != nil {
+		dom.PrintToConsole(err.Error())
+		return nil
 	}
 
-	reqBin, err := json.Marshal(req)
+	loginReq := &LoginReq{
+		PublicKey: secretKey.PublicKey().String(),
+	}
+
+	loginReqBin, err := json.Marshal(loginReq)
 	if err != nil {
 		dom.PrintToConsole(fmt.Sprintf("Error serializing public key: %v", err))
 		return nil
 	}
 
-	c.async.Run(func() {
+	req := &proto.Message{
+		PublicKey: secretKey.PublicKey().Compress(),
+		V:         1,
+		Body:      loginReqBin,
+		Timestamp: proto.TimestampNow(),
+	}
+
+	if err = req.Sign(secretKey.Bytes()); err != nil {
+		dom.PrintToConsole(fmt.Sprintf("Error signing login credentials: %v", err))
+		return nil
+	}
+
+	reqBin, err := json.Marshal(req)
+	if err != nil {
+		dom.PrintToConsole(fmt.Sprintf("Error serializing login credentials: %v", err))
+		return nil
+	}
+
+	async := api.NewAsync()
+	async.Run(func() {
 		client := api.NewAPI("/rpc/AuthService/Auth")
 		var res []byte
 		res, err = client.Do(reqBin, nil)
@@ -118,7 +162,12 @@ func (c *LoginComponent) uiLoginAction(this js.Value, args []js.Value) interface
 		resMap := &LoginResp{}
 		_ = json.Unmarshal(res, resMap)
 
-		c.events.Emit("user.logon", resMap.User, resMap.Err)
+		c.events.Emit(
+			"user.logon",
+			resMap.User,
+			input.String(),
+			resMap.Err,
+		)
 		return
 	})
 
@@ -127,10 +176,10 @@ func (c *LoginComponent) uiLoginAction(this js.Value, args []js.Value) interface
 
 func NewLoginComponents(di LoginComponentDI) {
 	c := &LoginComponent{
-		async:  api.NewAsync(),
-		events: di.Events,
-		store:  di.Storage,
-		tplDir: "login",
+		events:   di.Events,
+		tplDir:   "login",
+		authRepo: di.AuthRepo,
+		userRepo: di.UserRepo,
 	}
 
 	c.registerEvents()
