@@ -1,19 +1,21 @@
 package auth
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
-	"orbital/domain"
 	"orbital/orbital"
+	"orbital/pkg/proto"
 )
 
-type helloServiceServer struct {
-	server   *orbital.Server
-	service  AuthService
-	userRepo domain.UserRepository
+type authServiceServer struct {
+	server  orbital.HTTPService
+	service AuthService
 }
 
-func RegisterHelloServiceServer(server *orbital.Server, service AuthService) {
-	handler := &helloServiceServer{server: server, service: service}
+func RegisterHelloServiceServer(server orbital.HTTPService, wsServer orbital.WsService, service AuthService) {
+	handler := &authServiceServer{server: server, service: service}
 
 	server.Register(orbital.Route{
 		ServiceName: "AuthService",
@@ -21,12 +23,23 @@ func RegisterHelloServiceServer(server *orbital.Server, service AuthService) {
 		Handler:     handler.handleAuth,
 		Method:      http.MethodPost,
 	})
+
+	wsServer.Register(orbital.Topic{
+		Name:    "orbital.authentication",
+		Handler: handler.wsOrbitalAuthentication,
+	})
 }
 
-func (s *helloServiceServer) handleAuth(w http.ResponseWriter, r *http.Request) {
+func (s *authServiceServer) handleAuth(w http.ResponseWriter, r *http.Request) {
+
+	var protoMessage proto.Message
+	if err := orbital.Decode(r.Body, &protoMessage); err != nil {
+		s.server.OnError(w, r, err)
+		return
+	}
 
 	var req AuthReq
-	if err := orbital.Decode(r.Body, &req); err != nil {
+	if err := proto.Decode(protoMessage, &req, nil); err != nil {
 		s.server.OnError(w, r, err)
 		return
 	}
@@ -41,4 +54,26 @@ func (s *helloServiceServer) handleAuth(w http.ResponseWriter, r *http.Request) 
 		s.server.OnError(w, r, err)
 		return
 	}
+}
+
+func (s *authServiceServer) wsOrbitalAuthentication(connID string, data []byte) {
+	var protoMessage proto.Message
+
+	if err := json.Unmarshal(data, &protoMessage); err != nil {
+		fmt.Printf("(ConnID: %s) Cannot marshal message", connID)
+		return
+	}
+
+	var req WsAuthReq
+	if err := proto.Decode(protoMessage, &req, nil); err != nil {
+		fmt.Printf("(ConnID: %s) Cannot unmarshal message", connID)
+		return
+	}
+
+	if err := s.service.WsAuth(context.Background(), connID, req); err != nil {
+		fmt.Printf("(ConnID: %s) Cannot handle auth request", connID)
+		return
+	}
+
+	return
 }

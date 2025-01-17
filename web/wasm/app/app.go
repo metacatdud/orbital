@@ -2,24 +2,47 @@ package app
 
 import (
 	"fmt"
+	"orbital/pkg/cryptographer"
+	"orbital/pkg/proto"
+	"orbital/web/wasm/api"
 	"orbital/web/wasm/dom"
+	"orbital/web/wasm/domain"
 	"orbital/web/wasm/events"
-	"orbital/web/wasm/storage"
 	"syscall/js"
+	"time"
 )
 
 type AppDI struct {
-	Events  *events.Event
-	Storage storage.Storage
+	Events   *events.Event
+	WsConn   *api.WsConn
+	AuthRepo domain.AuthRepository
+	UserRepo domain.UserRepository
 }
 
 type App struct {
-	storage storage.Storage
-	events  *events.Event
+	events   *events.Event
+	wsConn   *api.WsConn
+	authRepo domain.AuthRepository
+	userRepo domain.UserRepository
 }
 
 func (app *App) Boot() {
-	app.events.Emit("app.ready")
+
+	retries := 3
+	interval := 1 * time.Second
+
+	go func() {
+		for i := 0; i < retries; i++ {
+			if app.wsConn.IsOpen() {
+				app.events.Emit("app.ready")
+				return
+			}
+
+			time.Sleep(interval)
+		}
+
+		dom.PrintToConsole("Cannot acquire readiness checker")
+	}()
 }
 
 func (app *App) Render(htmlEl js.Value) {
@@ -34,30 +57,59 @@ func (app *App) Render(htmlEl js.Value) {
 }
 
 func (app *App) prepare() {
-	app.events.On("app.ready", app.eventAppReady)
+	app.events.Once("app.ready", app.eventAppReady)
 	app.events.On("navigate", app.eventAppNav)
 	app.events.On("app.render", func(tpl js.Value) {
 		app.Render(tpl)
 	})
+
+	app.wsConn.On("orbital.authentication", func(data []byte) {
+		dom.PrintToConsole("orbital.authentication:", string(data))
+	})
 }
 
 func (app *App) eventAppReady() {
-	if app.hasSession() {
-		var authData map[string]string
-		if err := app.storage.Get("auth", &authData); err != nil {
-			dom.PrintToConsole("Failed to get public key")
-			return
-		}
+	if !app.userRepo.HasSession() {
+		app.events.Emit("login.show")
+	}
 
-		//TODO: Validate to backend to
-		fmt.Printf("Validate backend: %+v\n", authData)
-
-		app.events.Emit("dashboard.show")
+	auth, err := app.authRepo.Get()
+	if err != nil {
+		dom.PrintToConsole("Failed to get public key")
 		return
 	}
 
-	fmt.Println("Don't have session. Login")
-	app.events.Emit("login.show")
+	app.events.Emit("dashboard.show")
+
+	//TODO: MOVE THIS SOMEPLACE ELSE
+
+	secretKey, err := cryptographer.NewPrivateKeyFromString(auth.SecretKey)
+	if err != nil {
+		dom.PrintToConsole("Failed to convert Validate public key")
+		return
+	}
+
+	async := api.NewAsync()
+	async.Run(func() {
+
+		meta := &api.WsMetadata{
+			Topic: "orbital.authentication",
+		}
+
+		body := map[string]string{
+			"authorize": secretKey.PublicKey().String(),
+		}
+
+		var m *proto.Message
+		m, err = proto.Encode(*secretKey, meta, body)
+		if err != nil {
+			dom.PrintToConsole("Failed to encode message")
+		}
+		
+		app.wsConn.Send(*m)
+	})
+	return
+
 }
 
 func (app *App) eventAppNav(target string) {
@@ -70,24 +122,12 @@ func (app *App) eventAppNav(target string) {
 	app.events.Emit(target + ".show")
 }
 
-func (app *App) hasSession() bool {
-	var authData map[string]string
-	err := app.storage.Get("auth", &authData)
-	if err != nil {
-		return false
-	}
-
-	if _, ok := authData["publicKey"]; !ok {
-		return false
-	}
-
-	return true
-}
-
 func NewApp(di AppDI) *App {
 	app := &App{
-		events:  di.Events,
-		storage: di.Storage,
+		events:   di.Events,
+		wsConn:   di.WsConn,
+		authRepo: di.AuthRepo,
+		userRepo: di.UserRepo,
 	}
 
 	app.prepare()
