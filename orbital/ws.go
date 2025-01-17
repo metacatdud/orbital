@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"nhooyr.io/websocket"
-	"orbital/pkg/cryptographer"
 	"orbital/pkg/logger"
+	"orbital/pkg/proto"
 	"time"
 )
 
@@ -26,8 +26,8 @@ type (
 
 type WsService interface {
 	Register(topic Topic)
-	Broadcast(message []byte)
-	SendTo(connectionID string, message []byte) error
+	Broadcast(m proto.Message)
+	SendTo(connectionID string, m proto.Message) error
 }
 
 type WsConn struct {
@@ -68,22 +68,33 @@ func (ws *WsConn) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ws.handleConnection(wsConn)
 }
 
-func (ws *WsConn) Broadcast(message []byte) {
+func (ws *WsConn) Broadcast(m proto.Message) {
 
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
-	ws.connectionManager.Broadcast(ctx, message)
+	raw, err := json.Marshal(m)
+	if err != nil {
+		fmt.Println("cannot marshal message for broadcast")
+		return
+	}
+
+	ws.connectionManager.Broadcast(ctx, raw)
 }
 
-func (ws *WsConn) SendTo(connectionID string, message []byte) error {
+func (ws *WsConn) SendTo(connectionID string, m proto.Message) error {
 
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
-	return ws.connectionManager.SendTo(ctx, connectionID, message)
+	raw, err := json.Marshal(m)
+	if err != nil {
+		return err
+	}
+
+	return ws.connectionManager.SendTo(ctx, connectionID, raw)
 
 }
 
@@ -106,7 +117,7 @@ func (ws *WsConn) handleConnection(conn *websocket.Conn) {
 			return
 		}
 
-		var message cryptographer.Message
+		var message proto.Message
 		if err = json.Unmarshal(msg, &message); err != nil {
 			ws.log.Error(err.Error(), "connection", "unmarshal error", "resolution", "skip message")
 			continue
@@ -136,26 +147,5 @@ func NewWsConn() *WsConn {
 		connectionManager: NewWsConnectionManager(),
 	}
 
-	// Default topics. Overwrite with your custom one
-	wsConn.Register(Topic{
-		Name:    TopicOrbitalAuthentication,
-		Handler: wsConn.defaultOrbitalLogin,
-	})
-
 	return wsConn
-}
-
-// NewTopicMessage helper for creating a message
-func NewTopicMessage(topic string, data []byte) *cryptographer.Message {
-	t := &WsMetadata{
-		Topic: topic,
-	}
-	tBytes, _ := json.Marshal(t)
-
-	return &cryptographer.Message{
-		V:         1,
-		Timestamp: cryptographer.Now(),
-		Metadata:  tBytes,
-		Body:      data,
-	}
 }
