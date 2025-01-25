@@ -1,8 +1,9 @@
 package jobber
 
 import (
-	"orbital/pkg/stringer"
+	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -46,7 +47,7 @@ func (r *Runner) AddJob(interval time.Duration, maxRun int, task Task) string {
 		maxRun = MaxRunInfinte
 	}
 
-	id, _ := stringer.Random(16, stringer.RandNumber, stringer.RandLowercase)
+	id := fmt.Sprintf("job-%d", atomic.AddUint64(&jobCounter, 1))
 	j := &job{
 		id:       id,
 		interval: interval,
