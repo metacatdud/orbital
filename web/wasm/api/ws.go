@@ -3,9 +3,11 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"orbital/pkg/proto"
 	"orbital/web/wasm/dom"
 	"syscall/js"
+	"time"
 )
 
 type (
@@ -20,6 +22,12 @@ type WsConn struct {
 	topics       map[string]HandlerFunc
 	isOpen       bool
 	allowsBinary bool
+
+	reconnect            bool
+	reconnectAttempts    int
+	maxReconnectAttempts int
+	reconnectInterval    time.Duration
+	reconnectInProgress  bool
 }
 
 func (ws *WsConn) IsOpen() bool {
@@ -69,13 +77,20 @@ func (ws *WsConn) init() {
 
 func (ws *WsConn) onOpen(this js.Value, args []js.Value) interface{} {
 	ws.isOpen = true
+	ws.reconnectAttempts = 0
+
 	dom.PrintToConsole("WebSocket connection open")
 	return nil
 }
 
 func (ws *WsConn) onClose(this js.Value, args []js.Value) interface{} {
 	ws.isOpen = false
+
 	dom.PrintToConsole("WebSocket connection closed")
+	if ws.reconnect {
+		ws.scheduleReconnect()
+	}
+
 	return nil
 }
 
@@ -94,6 +109,9 @@ func (ws *WsConn) onMessage(this js.Value, args []js.Value) interface{} {
 
 func (ws *WsConn) onError(this js.Value, args []js.Value) interface{} {
 	dom.PrintToConsole("WebSocket connection error")
+	if ws.reconnect {
+		ws.scheduleReconnect()
+	}
 	return nil
 }
 
@@ -158,12 +176,45 @@ func (ws *WsConn) routeMessage(raw []byte) {
 	handler(msg.Body)
 }
 
+func (ws *WsConn) scheduleReconnect() {
+	if ws.reconnectInProgress {
+		dom.PrintToConsole("WebSocket connection already reconnecting")
+		return
+	}
+
+	ws.reconnectInProgress = true
+
+	if ws.maxReconnectAttempts != -1 && ws.reconnectAttempts >= ws.maxReconnectAttempts {
+		dom.PrintToConsole("Max reconnection attempts reached")
+		ws.reconnectInProgress = false
+		return
+	}
+
+	ws.reconnectAttempts++
+
+	delay := time.Duration(ws.reconnectAttempts) * ws.reconnectInterval
+	maxDelay := delay * 2
+	jitter := time.Duration(rand.Int63n(int64(maxDelay - delay)))
+	delay += jitter
+
+	dom.PrintToConsole(fmt.Sprintf("Attempting to reconnect in %v", delay))
+
+	// Wait the "delay" and call init to reconnect
+	time.AfterFunc(delay, func() {
+		ws.init()
+		ws.reconnectInProgress = false
+	})
+}
+
 func NewWsConn(binaryMode bool) *WsConn {
 
 	wsConn := &WsConn{
-		topics:       make(map[string]HandlerFunc),
-		isOpen:       false,
-		allowsBinary: binaryMode,
+		topics:               make(map[string]HandlerFunc),
+		isOpen:               false,
+		allowsBinary:         binaryMode,
+		reconnect:            true,
+		reconnectInterval:    5 * time.Second,
+		maxReconnectAttempts: -1,
 	}
 	wsConn.init()
 
