@@ -36,7 +36,7 @@ func (n *Orbital) Start() error {
 		return err
 	}
 
-	n.log.Info("Serving Orbital dashboard", "addr", fmt.Sprintf("%s:%d", n.ip, n.port))
+	n.log.Info("Starting Orbital", "addr", fmt.Sprintf("%s:%d", n.ip, n.port))
 
 	//if err := n.client.ListenAndServeTLS("", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
 	//	return fmt.Errorf("failed to start HTTP server: %w", err)
