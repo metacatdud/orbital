@@ -6,7 +6,7 @@ import (
 	"orbital/config"
 	"orbital/domain"
 	"orbital/internal/auth"
-	"orbital/internal/dashboard"
+	"orbital/internal/machine"
 	"orbital/orbital"
 	"orbital/pkg/db"
 	"orbital/pkg/prompt"
@@ -72,11 +72,13 @@ func setupAPIServer(cfg *config.Config) (*orbital.Server, *orbital.WsConn, error
 		Ws:       wsSrv,
 	})
 
-	dashService := dashboard.NewService(nil)
+	_ = machine.NewService(machine.Dependencies{
+		Ws: wsSrv,
+	})
 
 	// Register all services to apiServer
 	auth.RegisterHelloServiceServer(apiSrv, wsSrv, authService)
-	dashboard.RegisterDashboardServiceServer(apiSrv, wsSrv, dashService)
+	//machine.RegisterDashboardServiceServer(apiSrv, wsSrv, dashService)
 
 	return apiSrv, wsSrv, nil
 }
