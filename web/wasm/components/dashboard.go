@@ -26,6 +26,10 @@ type DashboardComponent struct {
 
 func (c *DashboardComponent) registerEvents() {
 	c.events.On("dashboard.show", c.Show)
+
+	c.wsConn.On("orbital.machine", func(data []byte) {
+		dom.PrintToConsole("machine stats", string(data))
+	})
 }
 
 func (c *DashboardComponent) Show() {
