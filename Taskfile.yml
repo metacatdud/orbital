@@ -22,7 +22,7 @@ tasks:
     cmds:
       - echo Building wasm file. OS $GOOS ARCH $GOARCH
       - go build -o orbital/web/orbital.wasm web/wasm/main.go
-      - cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" orbital/web/wasm_exec.js
+      - cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" orbital/web/wasm_exec.js
   build:css:
     vars:
       proj_dir: '{{.PWD}}'

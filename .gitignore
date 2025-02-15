@@ -14,4 +14,3 @@ web/tailwind/node_modules
 orbital/web/*
 !orbital/web/index.html
 storage/
-!web/wasm/storage
