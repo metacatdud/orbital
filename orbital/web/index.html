@@ -20,26 +20,49 @@
         </div>
     </div>
 
-    <div id="app"></div>
+    <div id="root"></div>
 
     <script src="wasm_exec.js"></script>
-    <script>
-        async function runWasm() {
-            const go = new Go();
+    <script type="module">
+        const brotli = await import("https://unpkg.com/brotli-wasm@3.0.1/index.web.js?module")
+            .then(m => m.default);
+        const go = new Go();
+
+        async function loadWasm() {
             try {
-                const wasm = await WebAssembly.instantiateStreaming(fetch("orbital.wasm"), go.importObject);
-                go.run(wasm.instance);
+                const response = await fetch("orbital.wasm.br");
+                if (!response.ok) {
+                    throw new Error(`Failed to load WASM file: ${response.status} ${response.statusText}`);
+                }
+
+                const buffer = await response.arrayBuffer();
+                const wasmBytes = brotli.decompress(new Uint8Array(buffer));
+
+                // Validate WASM header
+                if (
+                    wasmBytes[0] !== 0x00 ||
+                    wasmBytes[1] !== 0x61 ||
+                    wasmBytes[2] !== 0x73 ||
+                    wasmBytes[3] !== 0x6d
+                ) {
+                    throw new Error("Invalid WASM file: Magic number mismatch.");
+                }
+
+                console.log("Decompressed WASM byteLength:", wasmBytes.length);
+
+                const { instance } = await WebAssembly.instantiate(wasmBytes, go.importObject);
+                go.run(instance);
 
                 if (typeof bootstrapApp === "function") {
-                    setTimeout(bootstrapApp, 1000)
-
+                    setTimeout(bootstrapApp, 1000);
                 }
-            } catch (error) {
-                console.error("Failed to load WASM:", error);
+                
+            } catch (err) {
+                console.error("Error loading WASM module:", err);
             }
         }
 
-        document.addEventListener('DOMContentLoaded', runWasm)
+        loadWasm();
     </script>
 </body>
 </html>
