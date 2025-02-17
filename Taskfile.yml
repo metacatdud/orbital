@@ -15,25 +15,76 @@ vars:
   LDFLAGS: -ldflags="-s -w -X 'main.Version={{.VERSION_TAG}}' -X 'main.Compile={{.VERSION_COMPILE}}' -X 'main.Branch={{.VERSION_BRANCH}}'"
 
 tasks:
+
+  syscheck:
+    desc: "Check if dependency requirements for dev"
+    silent: true
+    cmds:
+      - |
+        command -v go >/dev/null || { 
+          echo "ERROR: Go is not installed.";
+          echo "Please install Go 1.24 or later from https://golang.org/dl/ and ensure your PATH includes the Go binary.";
+          exit 1;
+        }
+
+      - |
+        go_version=$(go version | awk '{print $3}' | sed 's/go//') &&
+        required_version="1.24" &&
+        if [[ "$go_version" != "$required_version"* ]]; then
+          echo "ERROR: Go version $required_version is required, but found $go_version.";
+          echo "Please upgrade your Go installation from https://golang.org/dl/";
+          exit 1;
+        else
+          echo "- Go version $go_version is OK.";
+        fi
+
+      - |
+        command -v npm >/dev/null || { 
+          echo "ERROR: npm is not installed.";
+          echo "Please install Node.js and npm from https://nodejs.org/en/download/ and ensure your PATH includes the npm binary.";
+          exit 1;
+        }
+      - echo "- NPM is installed."
+      - |
+        command -v brotli >/dev/null || { 
+          echo "ERROR: Brotli compressor is not installed.";
+          echo "Please install brotli (e.g., on Ubuntu: sudo apt-get install brotli) and ensure your PATH includes the brotli binary.";
+          exit 1;
+        }
+      - echo "- Brotli is installed"
+      - echo "All required software is installed!"
+
   build:wasm:
+    silent: true
     env:
       GOOS: js
       GOARCH: wasm
     cmds:
-      - echo Building wasm file. OS $GOOS ARCH $GOARCH
+      - echo "- Building wasm file"
+      - rm -r orbital/web/orbital.wasm*
       - go build -ldflags="-s -w" -o orbital/web/orbital.wasm web/wasm/main.go
-      - brotli -f -q 11 -o orbital/web/orbital.wasm.br orbital/web/orbital.wasm
       - cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" orbital/web/wasm_exec.js
+
   build:css:
+    silent: true
     vars:
       proj_dir: '{{.PWD}}'
     cmds:
+      - rm orbital/web/orbital.css
       - (cd web/tailwind && npx tailwindcss -i ./orbital.scss -o {{.proj_dir}}/orbital/web/orbital.css)
 
   wasm:
     cmds:
       - task: build:css
       - task: build:wasm
+
+  wasm:prod:
+    silent: true
+    cmds:
+      - task: wasm
+      - |
+        echo "- Compress with brotli. Level: 11"
+      - brotli -f -q 11 -o orbital/web/orbital.wasm.br orbital/web/orbital.wasm
 
   orbital:linux:
     desc: Build Orbital for Linux
