@@ -61,7 +61,6 @@ tasks:
       GOARCH: wasm
     cmds:
       - echo "- Building wasm file"
-      - rm -r orbital/web/orbital.wasm*
       - go build -ldflags="-s -w" -o orbital/web/orbital.wasm web/wasm/main.go
       - cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" orbital/web/wasm_exec.js
 
@@ -70,7 +69,6 @@ tasks:
     vars:
       proj_dir: '{{.PWD}}'
     cmds:
-      - rm orbital/web/orbital.css
       - (cd web/tailwind && npx tailwindcss -i ./orbital.scss -o {{.proj_dir}}/orbital/web/orbital.css)
 
   wasm:
