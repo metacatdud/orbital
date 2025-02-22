@@ -6,6 +6,8 @@ import (
 	"sync"
 )
 
+var Global = New()
+
 type Handler struct {
 	Callback interface{}
 	Once     bool
