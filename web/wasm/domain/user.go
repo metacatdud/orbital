@@ -1,8 +1,12 @@
 package domain
 
 import (
-	"orbital/web/wasm/dom"
-	"orbital/web/wasm/storage"
+	"encoding/json"
+	"orbital/orbital"
+)
+
+const (
+	UserStorageKey = "user"
 )
 
 type User struct {
@@ -12,37 +16,26 @@ type User struct {
 	Access    string `json:"access"`
 }
 
-type UserRepository struct {
-	db storage.Storage
+type LoginMessage struct {
+	PublicKey string `json:"publicKey"`
 }
 
-func (repo UserRepository) Save(u User) error {
-	return repo.db.Set("user", u)
+func (msg *LoginMessage) MarshalBinary() ([]byte, error) {
+	return json.Marshal(msg)
 }
 
-func (repo UserRepository) Get() (*User, error) {
-	u := &User{}
-	if err := repo.db.Get("user", u); err != nil {
-		return nil, err
-	}
-
-	return u, nil
+type LoginMetadata struct {
 }
 
-func (repo UserRepository) Remove() error {
-	return repo.db.Del("user")
+func (msg *LoginMetadata) MarshalBinary() ([]byte, error) {
+	return json.Marshal(msg)
 }
 
-func (repo UserRepository) HasSession() bool {
-	u := &User{}
-	if err := repo.db.Get("user", u); err != nil {
-		dom.PrintToConsole("user not found")
-		return false
-	}
-
-	return u.PublicKey != ""
+type LoginResponse struct {
+	User  *User                  `json:"user"`
+	Error *orbital.ErrorResponse `json:"error,omitempty"`
 }
 
-func NewUserRepository(db storage.Storage) UserRepository {
-	return UserRepository{db: db}
+func (msg *LoginResponse) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, msg)
 }

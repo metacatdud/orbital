@@ -12,10 +12,12 @@ type MachineService interface {
 type AllDataReq struct {
 }
 
+// SystemInfo basic aggregation struct
+// TODO: Detail this for better experience latter on
 type SystemInfo map[string]interface{}
 
 type AllDataResp struct {
-	SystemInfo *SystemInfo       `json:"systemInfo,omitempty"`
-	Code       orbital.Code      `json:"code"`
-	Error      map[string]string `json:"error,omitempty"`
+	SystemInfo *SystemInfo            `json:"systemInfo,omitempty"`
+	Code       orbital.Code           `json:"code"`
+	Error      *orbital.ErrorResponse `json:"error,omitempty"`
 }

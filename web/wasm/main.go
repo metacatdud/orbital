@@ -1,96 +1,70 @@
 package main
 
 import (
-	"embed"
-	"fmt"
-	"io/fs"
-	"orbital/web/wasm/api"
-	"orbital/web/wasm/app"
-	"orbital/web/wasm/components"
-	"orbital/web/wasm/dom"
-	"orbital/web/wasm/domain"
-	"orbital/web/wasm/events"
-	"orbital/web/wasm/storage"
-	"strings"
+	"orbital/web/wasm/orbital"
+	"orbital/web/wasm/pkg/deps"
+	"orbital/web/wasm/pkg/dom"
+	"orbital/web/wasm/pkg/events"
+	"orbital/web/wasm/pkg/state"
+	"orbital/web/wasm/pkg/storage"
+	"orbital/web/wasm/pkg/transport"
+	"orbital/web/wasm/templates"
 	"syscall/js"
 )
 
-//go:embed templates/*
-var templateFS embed.FS
-
 func main() {
-	loadTemplates()
 
 	js.Global().Set("bootstrapApp", js.FuncOf(bootstrapApp))
 
 	select {}
 }
 
-func loadTemplates() {
-	err := fs.WalkDir(templateFS, "templates", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if !d.IsDir() && strings.HasSuffix(path, ".html") {
-			var htmlBin []byte
-			htmlBin, err = templateFS.ReadFile(path)
-			if err != nil {
-				fmt.Printf("Error reading template %s: %v\n", path, err)
-				return err
-			}
-
-			tmplName := strings.TrimPrefix(path, "templates/")
-			tmplName = strings.TrimSuffix(tmplName, ".html")
-
-			err = dom.RegisterElement(tmplName, htmlBin)
-			if err != nil {
-				fmt.Printf("Error adding template %s: %v\n", path, err)
-			}
-
-			return nil
-		}
-
-		return nil
-	})
-	if err != nil {
-		fmt.Println("Templates load fail:", err.Error())
-		return
-	}
-}
-
 // bootstrapApp load the entrypoint
 func bootstrapApp(_ js.Value, _ []js.Value) interface{} {
 
-	event := events.New()
-	store := storage.NewLocalStorage()
-	ws := api.NewWsConn(true)
+	tplReg, err := templates.NewRegistry()
+	if err != nil {
+		dom.ConsoleError("Cannot create template registry", err.Error())
+		return nil
+	}
 
-	// Repositories
-	authRepo := domain.NewAuthRepository(store)
-	userRepo := domain.NewUserRepository(store)
-
-	orbital := app.NewApp(app.AppDI{
-		Events:   event,
-		WsConn:   ws,
-		AuthRepo: authRepo,
-		UserRepo: userRepo,
+	di, err := deps.NewDependency(deps.Packages{
+		Events:      events.New(),
+		State:       state.New(),
+		Storage:     storage.NewLocalStorage(),
+		TplRegistry: tplReg,
+		Ws:          transport.NewWsConn(true),
 	})
 
-	components.NewDashboardComponent(components.DashboardComponentDI{
-		Events:   event,
-		WsConn:   ws,
-		AuthRepo: authRepo,
-		UserRepo: userRepo,
-	})
+	if err != nil {
+		dom.ConsoleError("Cannot create dependencies registry", err.Error())
+		return nil
+	}
 
-	components.NewLoginComponents(components.LoginComponentDI{
-		Events:   event,
-		AuthRepo: authRepo,
-		UserRepo: userRepo,
-	})
+	// Services
+	_ = orbital.NewAuth(di)
+	_ = orbital.NewMachine(di)
 
-	orbital.Boot()
+	// Boot Orbital
+	app, err := orbital.NewApp(di)
+	if err != nil {
+		dom.ConsoleError("Cannot create orbital app", err.Error())
+		return nil
+	}
+
+	app.Boot()
 
 	return nil
+}
+
+func eventApp1(caller string) {
+	dom.ConsoleLog("Called event 1", caller)
+}
+
+func eventApp2(caller string) {
+	dom.ConsoleLog("Called event 2", caller)
+}
+
+func eventApp3(caller string) {
+	dom.ConsoleLog("Called event 3", caller)
 }

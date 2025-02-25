@@ -22,9 +22,9 @@ type User struct {
 }
 
 type AuthResp struct {
-	User  *User             `json:"user"`
-	Code  orbital.Code      `json:"code"`
-	Error map[string]string `json:"error,omitempty"`
+	User  *User                  `json:"user"`
+	Code  orbital.Code           `json:"code"`
+	Error *orbital.ErrorResponse `json:"error,omitempty"`
 }
 
 type WsAuthReq struct {
@@ -37,7 +37,7 @@ type WsUser struct {
 }
 
 type WsAuthResp struct {
-	User  *WsUser           `json:"user"`
-	Code  orbital.Code      `json:"code"`
-	Error map[string]string `json:"error,omitempty"`
+	User  *WsUser                `json:"user"`
+	Code  orbital.Code           `json:"code"`
+	Error *orbital.ErrorResponse `json:"error,omitempty"`
 }
