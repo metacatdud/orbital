@@ -1,4 +1,4 @@
-package api
+package transport
 
 import (
 	"bytes"
@@ -42,11 +42,11 @@ func (api *API) Do(data []byte, headers map[string]string) ([]byte, error) {
 		Transport: &http.Transport{
 			ForceAttemptHTTP2: false,
 		},
-		Timeout: time.Second * 5,
+		Timeout: 5 * time.Second,
 	}
+
 	response, err := client.Do(req)
 	if err != nil {
-		fmt.Printf("ERR1: %s\n", err)
 		return nil, err
 	}
 	defer response.Body.Close()
@@ -80,5 +80,9 @@ func (api *API) mergeHeaders(r *http.Request, extraHeaders map[string]string) {
 	for key, value := range extraHeaders {
 		r.Header.Set(key, value)
 	}
+}
 
+type ErrorResponse struct {
+	Type string `json:"type"`
+	Msg  string `json:"msg"`
 }

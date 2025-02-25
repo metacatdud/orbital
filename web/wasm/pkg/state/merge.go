@@ -1,7 +1,7 @@
 package state
 
 // MergeStateWithData will merge data from state with other data
-// the data from State wil be overwritten
+// the data from State will be overwritten
 func MergeStateWithData(stateData map[string]interface{}, data ...map[string]interface{}) map[string]interface{} {
 	mergedData := make(map[string]interface{}, len(stateData))
 	for k, v := range stateData {

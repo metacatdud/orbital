@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"orbital/pkg/logger"
 	"strconv"
+	"strings"
 )
 
 //go:embed web/*
@@ -55,8 +56,10 @@ func (n *Orbital) init() error {
 		return err
 	}
 
+	httpFS := http.FileServer(http.FS(staticFiles))
+
 	mux := http.NewServeMux()
-	mux.Handle("/", http.FileServer(http.FS(staticFiles)))
+	mux.Handle("/", fsFileHandlerMiddleware(httpFS))
 	mux.Handle("/rpc/", n.apiServer)
 	mux.Handle("/ws", n.wsServer)
 
@@ -105,4 +108,27 @@ func tlsConfig(dataPath string) (*tls.Config, error) {
 	}
 
 	return tlsCfg, nil
+}
+
+func fsFileHandlerMiddleware(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		if strings.HasSuffix(r.URL.Path, ".wasm") {
+			w.Header().Set("Content-Type", "application/wasm")
+
+			// This WASM should be considered dev build
+			// and not cached
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+			w.Header().Set("Pragma", "no-cache")
+			w.Header().Set("Expires", "0")
+		}
+
+		if strings.HasSuffix(r.URL.Path, ".wasm.br") {
+			w.Header().Set("Content-Type", "application/wasm")
+			w.Header().Set("Content-Encoding", "br")
+
+		}
+
+		h.ServeHTTP(w, r)
+	})
 }

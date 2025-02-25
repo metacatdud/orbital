@@ -32,16 +32,22 @@ tasks:
         required_version="1.24" &&
         if [[ "$go_version" != "$required_version"* ]]; then
           echo "ERROR: Go version $required_version is required, but found $go_version.";
-          echo "Please upgrade your Go installation from https://golang.org/dl/";
+          echo "Please upgrade your Go installation. Ref https://golang.org/dl/";
           exit 1;
         else
           echo "- Go version $go_version is OK.";
         fi
-
+      - |
+        command -v docker >/dev/null || { 
+          echo "ERROR: docker is not installed.";
+          echo "Please install Docker. Ref https://docs.docker.com/engine/install/";
+          exit 1;
+        }
+      - echo "- Docker is installed."
       - |
         command -v npm >/dev/null || { 
           echo "ERROR: npm is not installed.";
-          echo "Please install Node.js and npm from https://nodejs.org/en/download/ and ensure your PATH includes the npm binary.";
+          echo "Please install Node.js and npm. Ref https://nodejs.org/en/download/ and ensure your PATH includes the npm binary.";
           exit 1;
         }
       - echo "- NPM is installed."

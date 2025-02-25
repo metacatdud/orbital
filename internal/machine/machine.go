@@ -23,16 +23,29 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 	// DUMMY SERVER KEYS
 	_, sk, _ := cryptographer.GenerateKeysPair()
 	meta := &orbital.WsMetadata{
-		Topic: "orbital.machine",
+		Topic: "ws:orbital:machine",
 	}
 
 	body := &AllDataResp{}
 
+	info, err := getInfo()
+	if err != nil {
+		body.Code = orbital.Internal
+		body.Error = &orbital.ErrorResponse{
+			Type: "machine.stats.err",
+			Msg:  err.Error(),
+		}
+
+		msg, _ := proto.Encode(*sk, meta, body)
+		service.ws.Broadcast(*msg)
+	}
+
 	cpu, err := getCPUInfo()
 	if err != nil {
 		body.Code = orbital.Internal
-		body.Error = map[string]string{
-			"machine.stats.err": err.Error(),
+		body.Error = &orbital.ErrorResponse{
+			Type: "machine.stats.err",
+			Msg:  err.Error(),
 		}
 
 		msg, _ := proto.Encode(*sk, meta, body)
@@ -42,8 +55,9 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 	mem, err := getMemInfo()
 	if err != nil {
 		body.Code = orbital.Internal
-		body.Error = map[string]string{
-			"machine.stats.err": err.Error(),
+		body.Error = &orbital.ErrorResponse{
+			Type: "machine.stats.err",
+			Msg:  err.Error(),
 		}
 		msg, _ := proto.Encode(*sk, meta, body)
 		service.ws.Broadcast(*msg)
@@ -52,8 +66,9 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 	netwk, err := getNetworkInfo()
 	if err != nil {
 		body.Code = orbital.Internal
-		body.Error = map[string]string{
-			"machine.stats.err": err.Error(),
+		body.Error = &orbital.ErrorResponse{
+			Type: "machine.stats.err",
+			Msg:  err.Error(),
 		}
 
 		msg, _ := proto.Encode(*sk, meta, body)
@@ -61,9 +76,10 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 	}
 
 	stats := &SystemInfo{
-		"cpu": cpu,
-		"mem": mem,
-		"net": netwk,
+		"info": info,
+		"cpu":  cpu,
+		"mem":  mem,
+		"net":  netwk,
 	}
 
 	body.Code = orbital.OK
