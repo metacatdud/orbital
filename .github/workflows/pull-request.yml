@@ -1,0 +1,59 @@
+name: "Pull Request Auto Review"
+
+on:
+  pull_request:
+    branches: [ main ]
+    types: [ opened, synchronize, reopened ]
+
+jobs:
+    test-and-verify:
+      name: Test and Verify
+      runs-on: ubuntu-latest
+
+      env:
+        TEST_CMD: echo "Replace this with actual command"
+
+      steps:
+
+        # Checkout code
+        - name: Checkout code
+          uses: actions/checkout@v4
+          with:
+           fetch-depth: 0
+
+        # Evaluate commits
+        - name: Check Commitizen compliance
+          env:
+            COMMIT_REGEX: "(build|ci|docs|feat|fix|perf|refactor|style|test|chore|revert|bump)(\\([^)]+\\))?\\!?\\: [^[:space:]]"
+
+            # Skip this commit format
+            # It is added temporary by the pipeline
+            # Sample: "Merge 6cd9beff890af4f8d614xxxxxxxxxx4969779928 into a7614d31f6efee2c736xxxxxxxxxx6a96fe7186d"
+            MERGE_COMMIT_REGEX: "Merge [0-9a-f]+ into [0-9a-f]+"
+          run: |
+            invalid_commits=()
+            has_error=false
+            commit_log=$(git log origin/main..HEAD --pretty=format:"%H %s")
+            while IFS= read -r line; do
+            
+              # Cleanup the line and extract only the message 
+              commit_message=$(echo "$line" | cut -d' ' -f2-)
+              
+              # Skip the tmp merge commit from pipeline
+              if [[ $commit_message =~ $MERGE_COMMIT_REGEX ]]; then
+                continue
+              fi
+            
+              # Check the commit message
+              if ! [[ $commit_message =~ $COMMIT_REGEX ]]; then
+                invalid_commits+=("$line")
+                has_error=true
+              fi
+            done <<< "$commit_log"
+            
+            # Output errors if any            
+            if [ "$has_error" = true ]; then
+              echo "Invalid commit messages:"
+              printf '%s\n' "${invalid_commits[@]}"
+              exit 1
+            fi
