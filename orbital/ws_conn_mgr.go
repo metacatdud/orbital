@@ -3,7 +3,7 @@ package orbital
 import (
 	"context"
 	"fmt"
-	"nhooyr.io/websocket"
+	"github.com/coder/websocket"
 	"orbital/pkg/stringer"
 	"strings"
 	"sync"
