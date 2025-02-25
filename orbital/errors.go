@@ -23,3 +23,8 @@ func (e *Error) Error() string {
 		return "Unknown error"
 	}
 }
+
+type ErrorResponse struct {
+	Type string `json:"type"`
+	Msg  string `json:"msg"`
+}

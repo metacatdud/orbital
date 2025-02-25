@@ -1,6 +1,9 @@
 package dom
 
-import "syscall/js"
+import (
+	"strings"
+	"syscall/js"
+)
 
 func QuerySelector(selector string) js.Value {
 	elem := js.Global().Get("document").Call("querySelector", selector)
@@ -26,13 +29,45 @@ func CreateElement(tag string) js.Value {
 	return js.Global().Get("document").Call("createElement", tag)
 }
 
+func CreateElementFromString(htmlStr string) js.Value {
+	doc := js.Global().Get("document")
+	tag := extractTagName(htmlStr)
+
+	var container js.Value
+
+	switch tag {
+	case "tr", "td", "th":
+		container = doc.Call("createElement", "tbody")
+	case "option":
+		container = doc.Call("createElement", "select")
+	default:
+		container = doc.Call("createElement", "div")
+	}
+
+	container.Set("innerHTML", htmlStr)
+	return container.Get("firstElementChild")
+}
+
+func extractTagName(s string) string {
+	s = strings.TrimSpace(s)
+	if !strings.HasPrefix(s, "<") {
+		return ""
+	}
+	s = s[1:]
+	end := strings.IndexAny(s, " >")
+	if end == -1 {
+		return ""
+	}
+	return s[:end]
+}
+
 func SetInnerHTML(element js.Value, html string) {
 	if element.Truthy() {
 		element.Set("innerHTML", html)
 	}
 }
 
-func AppendChild(parent js.Value, child js.Value) {
+func AppendChild(parent, child js.Value) {
 	if parent.Truthy() && child.Truthy() {
 		parent.Call("appendChild", child)
 	}
@@ -50,14 +85,6 @@ func GetValue(selector string) string {
 		return ""
 	}
 	return elem.Get("value").String()
-}
-
-func GetPlaceholder(selector string) js.Value {
-	elem := QuerySelector(selector)
-	if elem.IsNull() {
-		return js.Null()
-	}
-	return elem
 }
 
 func AddEventListener(selector, event string, callback func(js.Value, []js.Value) interface{}) {

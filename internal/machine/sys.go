@@ -3,6 +3,7 @@ package machine
 import (
 	"errors"
 	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/host"
 	"github.com/shirou/gopsutil/v4/mem"
 	"github.com/shirou/gopsutil/v4/net"
 	"os/exec"
@@ -10,6 +11,19 @@ import (
 	"strings"
 	"time"
 )
+
+type Info struct {
+	HostID          string
+	Hostname        string
+	Uptime          uint64
+	Procs           uint64
+	OS              string
+	Platform        string
+	PlatformFamily  string
+	PlatformVersion string
+	KernelVersion   string
+	KernelArch      string
+}
 
 type CPUInfo struct {
 	TotalCores int       `json:"totalCores"`
@@ -44,6 +58,28 @@ type MemoryInfo struct {
 type NetworkInfo struct {
 	Type string `json:"type"`
 	Name string `json:"name"`
+}
+
+func getInfo() (*Info, error) {
+	sysInfo := &Info{}
+
+	info, err := host.Info()
+	if err != nil {
+		return nil, err
+	}
+
+	sysInfo.HostID = info.HostID
+	sysInfo.Hostname = info.Hostname
+	sysInfo.Uptime = info.Uptime
+	sysInfo.Procs = info.Procs
+	sysInfo.Platform = info.Platform
+	sysInfo.PlatformFamily = info.PlatformFamily
+	sysInfo.PlatformVersion = info.PlatformVersion
+	sysInfo.KernelVersion = info.KernelVersion
+	sysInfo.KernelArch = info.KernelArch
+
+	return sysInfo, nil
+
 }
 
 func getCPUInfo() (*CPUInfo, error) {

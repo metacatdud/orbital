@@ -1,11 +1,11 @@
-package api
+package transport
 
 import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
 	"orbital/pkg/proto"
-	"orbital/web/wasm/dom"
+	"orbital/web/wasm/pkg/dom"
 	"syscall/js"
 	"time"
 )
@@ -36,13 +36,13 @@ func (ws *WsConn) IsOpen() bool {
 
 func (ws *WsConn) Send(msg proto.Message) {
 	if !ws.isOpen {
-		dom.PrintToConsole("WebSocket closed")
+		dom.ConsoleLog("WebSocket closed")
 		return
 	}
 
 	raw, err := json.Marshal(msg)
 	if err != nil {
-		dom.PrintToConsole(err.Error())
+		dom.ConsoleLog(err.Error())
 		return
 	}
 
@@ -65,7 +65,7 @@ func (ws *WsConn) init() {
 	ws.client = socket
 
 	if ws.allowsBinary {
-		dom.PrintToConsole("WebSocket codec switch to binary")
+		dom.ConsoleLog("WebSocket codec switch to binary")
 		socket.Set("binaryType", "arraybuffer")
 	}
 
@@ -79,14 +79,14 @@ func (ws *WsConn) onOpen(this js.Value, args []js.Value) interface{} {
 	ws.isOpen = true
 	ws.reconnectAttempts = 0
 
-	dom.PrintToConsole("WebSocket connection open")
+	dom.ConsoleLog("WebSocket connection open")
 	return nil
 }
 
 func (ws *WsConn) onClose(this js.Value, args []js.Value) interface{} {
 	ws.isOpen = false
 
-	dom.PrintToConsole("WebSocket connection closed")
+	dom.ConsoleLog("WebSocket connection closed")
 	if ws.reconnect {
 		ws.scheduleReconnect()
 	}
@@ -108,7 +108,7 @@ func (ws *WsConn) onMessage(this js.Value, args []js.Value) interface{} {
 }
 
 func (ws *WsConn) onError(this js.Value, args []js.Value) interface{} {
-	dom.PrintToConsole("WebSocket connection error")
+	dom.ConsoleLog("WebSocket connection error")
 	if ws.reconnect {
 		ws.scheduleReconnect()
 	}
@@ -146,30 +146,30 @@ func (ws *WsConn) routeMessage(raw []byte) {
 
 	var msg *proto.Message
 	if err := json.Unmarshal(raw, &msg); err != nil {
-		dom.PrintToConsole("[routeMessage] not valid JSON, fallback to raw textData")
+		dom.ConsoleLog("[routeMessage] not valid JSON, fallback to raw textData")
 		return
 	}
 
 	ok, err := msg.Verify()
 	if err != nil {
-		dom.PrintToConsole(err.Error())
+		dom.ConsoleLog(err.Error())
 		return
 	}
 
 	if !ok {
-		dom.PrintToConsole("[routeMessage] message signature not valid")
+		dom.ConsoleLog("[routeMessage] message signature not valid")
 		return
 	}
 
 	var metadata WsMetadata
 	if err = json.Unmarshal(msg.Metadata, &metadata); err != nil {
-		dom.PrintToConsole("[routeMessage] not valid msg.Metadata format, fallback to raw textData")
+		dom.ConsoleLog("[routeMessage] not valid msg.Metadata format, fallback to raw textData")
 		return
 	}
 
 	handler, exists := ws.topics[metadata.Topic]
 	if !exists {
-		dom.PrintToConsole("[routeMessage] topic not found", metadata.Topic)
+		dom.ConsoleLog("[routeMessage] topic not found", metadata.Topic)
 		return
 	}
 
@@ -178,14 +178,14 @@ func (ws *WsConn) routeMessage(raw []byte) {
 
 func (ws *WsConn) scheduleReconnect() {
 	if ws.reconnectInProgress {
-		dom.PrintToConsole("WebSocket connection already reconnecting")
+		dom.ConsoleLog("[scheduleReconnect] ws already reconnecting")
 		return
 	}
 
 	ws.reconnectInProgress = true
 
 	if ws.maxReconnectAttempts != -1 && ws.reconnectAttempts >= ws.maxReconnectAttempts {
-		dom.PrintToConsole("Max reconnection attempts reached")
+		dom.ConsoleLog("[scheduleReconnect] max reconnection attempts reached")
 		ws.reconnectInProgress = false
 		return
 	}
@@ -197,7 +197,7 @@ func (ws *WsConn) scheduleReconnect() {
 	jitter := time.Duration(rand.Int63n(int64(maxDelay - delay)))
 	delay += jitter
 
-	dom.PrintToConsole(fmt.Sprintf("Attempting to reconnect in %v", delay))
+	dom.ConsoleLog("[scheduleReconnect] attempting to reconnect in", delay.String())
 
 	// Wait the "delay" and call init to reconnect
 	time.AfterFunc(delay, func() {
@@ -216,6 +216,7 @@ func NewWsConn(binaryMode bool) *WsConn {
 		reconnectInterval:    5 * time.Second,
 		maxReconnectAttempts: -1,
 	}
+
 	wsConn.init()
 
 	return wsConn

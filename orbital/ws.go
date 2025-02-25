@@ -37,7 +37,7 @@ type WsConn struct {
 }
 
 func (ws *WsConn) Register(topic Topic) {
-	ws.log.Info("Register topic:", "topic", topic.Name)
+	ws.log.Info("Register topic", "topic", topic.Name)
 
 	if _, found := ws.topics[topic.Name]; found {
 		ws.log.Error(fmt.Sprintf("topic %s is already registered", topic.Name))
@@ -108,7 +108,7 @@ func (ws *WsConn) handleConnection(conn *websocket.Conn) {
 		conn.Close(websocket.StatusNormalClosure, "closing connection")
 	}()
 
-	ws.log.Info("New connection created", "connID", connID)
+	ws.log.Info("New connection joined", "connID", connID)
 
 	for {
 		_, msg, err := conn.Read(context.Background())

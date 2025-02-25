@@ -25,8 +25,9 @@ func (service *Auth) Auth(ctx context.Context, req AuthReq) (AuthResp, error) {
 	if err != nil {
 		return AuthResp{
 			Code: orbital.NotFound,
-			Error: map[string]string{
-				"auth.notfound": "unknown secret key",
+			Error: &orbital.ErrorResponse{
+				Type: "auth.notfound",
+				Msg:  "unknown secret key",
 			},
 		}, nil
 	}
@@ -57,8 +58,9 @@ func (service *Auth) WsAuth(ctx context.Context, connID string, req WsAuthReq) e
 		}
 
 		body.Code = orbital.Unauthenticated
-		body.Error = map[string]string{
-			"auth.unauthenticated": "unknown secret key",
+		body.Error = &orbital.ErrorResponse{
+			Type: "auth.unauthenticated",
+			Msg:  "unknown secret key",
 		}
 
 		msg, _ := proto.Encode(*sk, meta, body)
