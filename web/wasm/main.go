@@ -56,15 +56,3 @@ func bootstrapApp(_ js.Value, _ []js.Value) interface{} {
 
 	return nil
 }
-
-func eventApp1(caller string) {
-	dom.ConsoleLog("Called event 1", caller)
-}
-
-func eventApp2(caller string) {
-	dom.ConsoleLog("Called event 2", caller)
-}
-
-func eventApp3(caller string) {
-	dom.ConsoleLog("Called event 3", caller)
-}
