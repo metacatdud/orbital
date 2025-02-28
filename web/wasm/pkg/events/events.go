@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"sync/atomic"
 )
 
 var Global = New()
 
 type Handler struct {
+	id       uint64
 	Callback interface{}
 	Once     bool
 }
@@ -16,6 +18,7 @@ type Handler struct {
 type Event struct {
 	mu        sync.RWMutex
 	listeners map[string][]*Handler
+	counter   uint64
 }
 
 func New() *Event {
@@ -24,35 +27,17 @@ func New() *Event {
 	}
 }
 
-// On create a listener for an event
-func (e *Event) On(eventName string, handler interface{}) {
-	e.register(eventName, handler, false)
+// On creates a listener for an event and returns an unsubscribe function.
+func (e *Event) On(eventName string, handler interface{}) func() {
+	return e.register(eventName, handler, false)
 }
 
-// Once create a listener for an event which will be used once
-func (e *Event) Once(eventName string, handler interface{}) {
-	e.register(eventName, handler, true)
+// Once creates a one-time listener for an event and returns an unsubscribe function.
+func (e *Event) Once(eventName string, handler interface{}) func() {
+	return e.register(eventName, handler, true)
 }
 
-// Off remove a listen from event stack
-func (e *Event) Off(eventName string, handler interface{}) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-
-	if handlers, ok := e.listeners[eventName]; ok {
-		newHandlers := make([]*Handler, 0)
-
-		for _, h := range handlers {
-			if h.Callback != handler {
-				newHandlers = append(newHandlers, h)
-			}
-		}
-
-		e.listeners[eventName] = newHandlers
-	}
-}
-
-// Remove an event from listeners stack with all of its handlers
+// Remove deletes all listeners for a given event.
 func (e *Event) Remove(eventName string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -61,42 +46,44 @@ func (e *Event) Remove(eventName string) {
 
 func (e *Event) Emit(eventName string, params ...interface{}) {
 	e.mu.RLock()
-	defer e.mu.RUnlock()
+	handlers, ok := e.listeners[eventName]
+	if !ok {
+		e.mu.RUnlock()
+		return
+	}
+	// Copy the slice to avoid race conditions if it gets modified during iteration.
+	copiedHandlers := make([]*Handler, len(handlers))
+	copy(copiedHandlers, handlers)
+	e.mu.RUnlock()
 
-	if handlers, ok := e.listeners[eventName]; ok {
-		eventsToRemove := []*Handler{}
-
-		for _, h := range handlers {
-			e.callHandler(h.Callback, params)
-			if h.Once {
-				eventsToRemove = append(eventsToRemove, h)
-			}
+	var onceIDs []uint64
+	for _, h := range copiedHandlers {
+		e.callHandler(h.Callback, params)
+		if h.Once {
+			onceIDs = append(onceIDs, h.id)
 		}
+	}
 
-		if len(eventsToRemove) > 0 {
-			e.mu.RUnlock() //Unlock read lock to switch to write locker
-			e.mu.Lock()
-
-			eventsRemaining := make([]*Handler, 0)
-			for _, h := range handlers {
-				rm := false
-
-				for _, hRem := range eventsToRemove {
-					if hRem == h {
-						rm = true
+	if len(onceIDs) > 0 {
+		e.mu.Lock()
+		currentHandlers, ok := e.listeners[eventName]
+		if ok {
+			newHandlers := currentHandlers[:0]
+			for _, h := range currentHandlers {
+				remove := false
+				for _, id := range onceIDs {
+					if h.id == id {
+						remove = true
 						break
 					}
 				}
-
-				if !rm {
-					eventsRemaining = append(eventsRemaining, h)
+				if !remove {
+					newHandlers = append(newHandlers, h)
 				}
 			}
-
-			e.listeners[eventName] = eventsRemaining
-			e.mu.Unlock()
-			e.mu.RLock() // Switch locker back to read lock
+			e.listeners[eventName] = newHandlers
 		}
+		e.mu.Unlock()
 	}
 }
 
@@ -116,7 +103,7 @@ func (e *Event) callHandler(handler interface{}, params []interface{}) {
 	handlerValue.Call(args)
 }
 
-func (e *Event) register(eventName string, handler interface{}, once bool) {
+func (e *Event) register(eventName string, handler interface{}, once bool) func() {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -124,8 +111,35 @@ func (e *Event) register(eventName string, handler interface{}, once bool) {
 		panic(fmt.Sprintf("handler for event %s is not a function", eventName))
 	}
 
-	e.listeners[eventName] = append(e.listeners[eventName], &Handler{
+	id := atomic.AddUint64(&e.counter, 1)
+	h := &Handler{
+		id:       id,
 		Callback: handler,
 		Once:     once,
-	})
+	}
+
+	e.listeners[eventName] = append(e.listeners[eventName], h)
+
+	return func() {
+		e.off(eventName, id)
+	}
+}
+
+func (e *Event) off(eventName string, handlerID uint64) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	handlers, ok := e.listeners[eventName]
+	if !ok {
+		return
+	}
+
+	// Filter out the handler with the matching ID.
+	newHandlers := handlers[:0]
+	for _, h := range handlers {
+		if h.id != handlerID {
+			newHandlers = append(newHandlers, h)
+		}
+	}
+	e.listeners[eventName] = newHandlers
 }
