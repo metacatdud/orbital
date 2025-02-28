@@ -27,7 +27,11 @@ func New() *State {
 func (s *State) Get(key string) interface{} {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.states[key]
+	item, ok := s.states[key]
+	if !ok {
+		return nil
+	}
+	return item.value
 }
 
 func (s *State) GetAll() map[string]interface{} {
@@ -35,8 +39,8 @@ func (s *State) GetAll() map[string]interface{} {
 	defer s.mu.RUnlock()
 
 	stateCopy := make(map[string]interface{}, len(s.states))
-	for k, v := range s.states {
-		stateCopy[k] = v
+	for k, item := range s.states {
+		stateCopy[k] = item.value
 	}
 	return stateCopy
 }
@@ -45,7 +49,7 @@ func (s *State) Set(key string, value interface{}) {
 	s.mu.Lock()
 
 	oldItem, exists := s.states[key]
-	newItemRefType := reflect.TypeOf(value)
+	newType := reflect.TypeOf(value)
 
 	// If no change, skip
 	if exists && reflect.DeepEqual(oldItem.value, value) {
@@ -56,7 +60,7 @@ func (s *State) Set(key string, value interface{}) {
 	s.states[key] = stateItem{
 		value:    value,
 		oldValue: oldItem.value,
-		typeRef:  newItemRefType,
+		typeRef:  newType,
 	}
 
 	watchers := s.watchers[key]
@@ -66,8 +70,8 @@ func (s *State) Set(key string, value interface{}) {
 		go cb(oldItem.value, value)
 	}
 
-	// If struct we need to parse the fields
-	if newItemRefType.Kind() == reflect.Struct {
+	// If the new value is a struct check its fields.
+	if newType.Kind() == reflect.Struct {
 		s.setStructObserver(key, oldItem.value, value)
 	}
 
@@ -75,17 +79,17 @@ func (s *State) Set(key string, value interface{}) {
 
 func (s *State) Watch(key string, callback func(oldValue, newValue interface{})) func() {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	s.watchers[key] = append(s.watchers[key], callback)
+	s.mu.Unlock()
 
 	return func() {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 
-		for i, cb := range s.watchers[key] {
+		list := s.watchers[key]
+		for i, cb := range list {
 			if reflect.ValueOf(cb).Pointer() == reflect.ValueOf(callback).Pointer() {
-				s.watchers[key] = append(s.watchers[key][:i], s.watchers[key][i+1:]...)
+				s.watchers[key] = append(list[:i], list[i+1:]...)
 				break
 			}
 		}
@@ -96,7 +100,7 @@ func (s *State) setStructObserver(key string, oldValue, newValue interface{}) {
 	oldVal := reflect.ValueOf(oldValue)
 	newVal := reflect.ValueOf(newValue)
 
-	// Mind pointers
+	// If pointers, get the element.
 	if oldVal.Kind() == reflect.Ptr {
 		oldVal = oldVal.Elem()
 	}
@@ -119,9 +123,9 @@ func (s *State) setStructObserver(key string, oldValue, newValue interface{}) {
 		if !reflect.DeepEqual(oldFieldValue, newFieldValue) {
 			watchKey := key + "." + fieldName
 
-			s.mu.Lock()
+			s.mu.RLock()
 			watchers := s.watchers[watchKey]
-			s.mu.Unlock()
+			s.mu.RUnlock()
 
 			for _, cb := range watchers {
 				go cb(oldFieldValue, newFieldValue)
