@@ -1,0 +1,180 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Light Theme Colors */
+  --os-bg: #f8fafc;
+  --os-taskbar: #f1f5f9;
+  --os-accent: #e2e8f0;
+  --os-border: #cbd5e1;
+  --os-text: #475569;
+
+  /* Dark Theme Colors */
+  --terminal-bg: #0a1322;
+  --terminal-taskbar: #0f172a;
+  --terminal-accent: #1e293b;
+  --terminal-border: #00ff9580;
+  --terminal-text: #00ff95;
+  --terminal-glow: #00ff9520;
+
+  /* Alert Colors */
+  --alert-success: #10b981;
+  --alert-warning: #f59e0b;
+  --alert-error: #ef4444;
+  --alert-info: #3b82f6;
+}
+
+
+html {
+  .dark {
+    .terminal-glow {
+      text-shadow: 0 0 10px #00ff9540;
+    }
+    .terminal-border-glow {
+      box-shadow: 0 0 5px #00ff9530;
+    }
+  }
+}
+
+body {
+  @apply font-mono bg-os-bg text-os-text dark:bg-terminal-bg dark:text-terminal-text min-h-screen transition-colors duration-200;
+}
+
+#app {
+  @apply w-full mx-auto;
+
+  &.hide {
+    @apply hidden;
+  }
+  &.show {
+    @apply block;
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+#loading {
+  @apply flex justify-center items-center h-screen px-6;
+  .spinner {
+    animation: spin 2s linear infinite; /* Fallback animation */
+    @apply animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500/75;
+  }
+
+  .loading-text {
+    @apply mt-4 text-gray-600 font-semibold;
+  }
+
+  &.hide {
+    @apply hidden;
+  }
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background-color: white;
+  border: 1px solid var(--os-border);
+  border-radius: 0.125rem;
+  transition: all 150ms;
+}
+
+.form-input:focus {
+  outline: none;
+  ring: 2px;
+  ring-color: var(--os-accent);
+}
+
+form-input.error {
+  border-color: var(--alert-error);
+}
+
+.form-input.warning {
+  border-color: var(--alert-warning);
+}
+
+.form-button {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.125rem;
+  transition: all 150ms;
+}
+
+.form-button-primary {
+  background-color: var(--os-accent);
+  color: var(--os-text);
+}
+
+.form-button-primary:hover {
+  opacity: 0.8;
+}
+
+.form-button-secondary {
+  border: 1px solid var(--os-border);
+}
+
+.form-button-secondary:hover {
+  background-color: rgba(226, 232, 240, 0.1);
+}
+
+.helper-text {
+  font-size: 0.6rem;
+  margin-top: 0.25rem;
+}
+
+.helper-text.error {
+  color: var(--alert-error);
+}
+
+.helper-text.warning {
+  color: var(--alert-warning);
+}
+
+
+.dark {
+  .form-input {
+    background-color: rgba(30, 41, 59, 0.2);
+    border-color: var(--terminal-border);
+  }
+
+  .form-input:focus {
+    ring-color: rgba(0, 255, 149, 0.3);
+  }
+
+  .form-input.error {
+    border-color: rgba(239, 68, 68, 0.5);
+  }
+
+  .form-input.warning {
+    border-color: rgba(245, 158, 11, 0.5);
+  }
+
+  .form-button-primary {
+    background-color: var(--terminal-accent);
+    color: var(--terminal-text);
+  }
+
+  .form-button-secondary {
+    border-color: var(--terminal-border);
+  }
+
+  .form-button-secondary:hover {
+    background-color: rgba(30, 41, 59, 0.1);
+  }
+
+  .helper-text.error {
+    color: rgba(239, 68, 68, 0.9);
+  }
+
+  .helper-text.warning {
+    color: rgba(245, 158, 11, 0.9);
+  }
+}

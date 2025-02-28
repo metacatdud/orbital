@@ -75,7 +75,7 @@ tasks:
     vars:
       proj_dir: '{{.PWD}}'
     cmds:
-      - (cd web/tailwind && npx tailwindcss -i ./orbital.scss -o {{.proj_dir}}/orbital/web/orbital.css)
+      - (cd web/tailwind && npx tailwindcss -i ./orbital.css -o {{.proj_dir}}/orbital/web/orbital.css)
 
   wasm:
     cmds:
