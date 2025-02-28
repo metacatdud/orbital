@@ -75,11 +75,23 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 		service.ws.Broadcast(*msg)
 	}
 
+	disk, err := getDiskInfo()
+	if err != nil {
+		body.Code = orbital.Internal
+		body.Error = &orbital.ErrorResponse{
+			Type: "machine.stats.err",
+			Msg:  err.Error(),
+		}
+		msg, _ := proto.Encode(*sk, meta, body)
+		service.ws.Broadcast(*msg)
+	}
+
 	stats := &SystemInfo{
-		"info": info,
-		"cpu":  cpu,
-		"mem":  mem,
-		"net":  netwk,
+		"info":  info,
+		"cpu":   cpu,
+		"disks": disk,
+		"mem":   mem,
+		"net":   netwk,
 	}
 
 	body.Code = orbital.OK
@@ -97,7 +109,7 @@ func NewService(deps Dependencies) *Machine {
 		ws: deps.Ws,
 	}
 
-	m.jr.AddJob(30*time.Second, jobber.MaxRunInfinte, func() {
+	m.jr.AddJob(10*time.Second, jobber.MaxRunInfinte, func() {
 		_ = m.JobAllData(context.Background(), AllDataReq{})
 	})
 
