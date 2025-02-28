@@ -3,6 +3,7 @@ package machine
 import (
 	"errors"
 	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/disk"
 	"github.com/shirou/gopsutil/v4/host"
 	"github.com/shirou/gopsutil/v4/mem"
 	"github.com/shirou/gopsutil/v4/net"
@@ -41,8 +42,8 @@ type GPUInfo struct {
 
 type Disk struct {
 	Name  string `json:"name"`
-	Total string `json:"total"`
-	Free  string `json:"free"`
+	Total uint64 `json:"total"`
+	Free  uint64 `json:"free"`
 }
 
 type DiskInfo struct {
@@ -83,28 +84,56 @@ func getInfo() (*Info, error) {
 }
 
 func getCPUInfo() (*CPUInfo, error) {
-	cpuInfo := &CPUInfo{}
+	info := &CPUInfo{}
 
 	if cores, err := cpu.Counts(true); err == nil {
-		cpuInfo.TotalCores = cores
+		info.TotalCores = cores
 	}
 
 	if loads, err := cpu.Percent(1*time.Second, true); err == nil {
-		cpuInfo.CoreLoad = loads
+		info.CoreLoad = loads
 	}
 
-	return cpuInfo, nil
+	return info, nil
+}
+
+func getDiskInfo() (*DiskInfo, error) {
+	info := &DiskInfo{}
+
+	partitions, err := disk.Partitions(false)
+	if err != nil {
+		return info, err
+	}
+
+	for _, p := range partitions {
+		usage, err := disk.Usage(p.Mountpoint)
+		if err != nil {
+			// TODO: Maybe log this errors somehow?
+			continue // skip partitions with issues
+		}
+
+		d := Disk{
+			Name:  p.Device,
+			Total: usage.Total,
+			Free:  usage.Free,
+		}
+
+		info.Disks = append(info.Disks, d)
+		info.Total += usage.Total
+	}
+
+	return info, nil
 }
 
 func getMemInfo() (*MemoryInfo, error) {
-	memInfo := &MemoryInfo{}
+	info := &MemoryInfo{}
 
 	if vm, err := mem.VirtualMemory(); err == nil {
-		memInfo.Total = vm.Total
-		memInfo.Free = vm.Available
+		info.Total = vm.Total
+		info.Free = vm.Available
 	}
 
-	return memInfo, nil
+	return info, nil
 }
 
 func getNetworkInfo() (*NetworkInfo, error) {
