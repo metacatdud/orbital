@@ -1,6 +1,7 @@
 package state
 
 import (
+	"orbital/web/wasm/pkg/dom"
 	"reflect"
 	"sync"
 )
@@ -48,13 +49,35 @@ func (s *State) GetAll() map[string]interface{} {
 func (s *State) Set(key string, value interface{}) {
 	s.mu.Lock()
 
-	oldItem, exists := s.states[key]
 	newType := reflect.TypeOf(value)
-
-	// If no change, skip
-	if exists && reflect.DeepEqual(oldItem.value, value) {
+	if newType == nil {
+		dom.ConsoleError("nil value provided", key)
 		s.mu.Unlock()
 		return
+	}
+
+	// Reject pointer values.
+	if newType.Kind() == reflect.Ptr {
+		dom.ConsoleLog("pointer types are not supported for key", key, " Received pointer", newType)
+		s.mu.Unlock()
+		return
+	}
+
+	oldItem, exists := s.states[key]
+
+	if exists {
+		if oldItem.typeRef != newType {
+			dom.ConsoleError("types mismatch for existing state", key, "Received", newType.String(), "Expected", oldItem.typeRef.String())
+			s.mu.Unlock()
+			return
+		}
+
+		// Skip update if the values are deeply equal.
+		if reflect.DeepEqual(oldItem.value, value) {
+			dom.ConsoleError("oldValue and newValue are not the same")
+			s.mu.Unlock()
+			return
+		}
 	}
 
 	s.states[key] = stateItem{
@@ -72,7 +95,9 @@ func (s *State) Set(key string, value interface{}) {
 
 	// If the new value is a struct check its fields.
 	if newType.Kind() == reflect.Struct {
-		s.setStructObserver(key, oldItem.value, value)
+		if exists && oldItem.typeRef.Kind() == reflect.Struct {
+			s.setStructObserver(key, oldItem.value, value)
+		}
 	}
 
 }
@@ -97,19 +122,11 @@ func (s *State) Watch(key string, callback func(oldValue, newValue interface{}))
 }
 
 func (s *State) setStructObserver(key string, oldValue, newValue interface{}) {
+
 	oldVal := reflect.ValueOf(oldValue)
 	newVal := reflect.ValueOf(newValue)
 
-	// If pointers, get the element.
-	if oldVal.Kind() == reflect.Ptr {
-		oldVal = oldVal.Elem()
-	}
-
-	if newVal.Kind() == reflect.Ptr {
-		newVal = newVal.Elem()
-	}
-
-	// Ensure struct
+	// Ensure both values are structs.
 	if oldVal.Kind() != reflect.Struct || newVal.Kind() != reflect.Struct {
 		return
 	}
