@@ -21,18 +21,20 @@ func (field *LoginComponentFields) ToMap() map[string]interface{} {
 
 type LoginComponent struct {
 	di           *deps.Dependency
+	docks        map[string]js.Value
 	element      js.Value
 	fields       *LoginComponentFields
 	unwatchState []func()
 }
 
-var _ component.Component = (*LoginComponent)(nil)
+var _ component.ContainerComponent = (*LoginComponent)(nil)
 var _ component.EventControl = (*LoginComponent)(nil)
 var _ component.StateControl = (*LoginComponent)(nil)
 
 func NewLoginComponent(di *deps.Dependency) *LoginComponent {
 	comp := &LoginComponent{
 		di:     di,
+		docks:  make(map[string]js.Value),
 		fields: &LoginComponentFields{},
 	}
 
@@ -92,6 +94,7 @@ func (comp *LoginComponent) Render() error {
 	}
 
 	comp.element = dom.CreateElementFromString(buf.String())
+	comp.SetContainers()
 
 	return nil
 }
@@ -108,6 +111,32 @@ func (comp *LoginComponent) UnbindStateWatch() {
 	}
 }
 
+func (comp *LoginComponent) GetContainer(name string) js.Value {
+	container, ok := comp.docks[name]
+	if !ok {
+		return js.Null()
+	}
+
+	if container.IsNull() {
+		return js.Null()
+	}
+
+	return container
+}
+
+func (comp *LoginComponent) SetContainers() {
+	if comp.element.IsNull() {
+		dom.ConsoleError("element is missing", comp.ID())
+		return
+	}
+
+	dockingAreas := dom.QuerySelectorAllFromElement(comp.element, `[data-dock]`)
+	for _, area := range dockingAreas {
+		areaName := area.Get("dataset").Get("dock").String()
+		comp.docks[areaName] = area
+	}
+}
+
 func (comp *LoginComponent) init() {
 	comp.BindEvents()
 	comp.BindStateWatch()
@@ -115,17 +144,17 @@ func (comp *LoginComponent) init() {
 
 func (comp *LoginComponent) stateErrored(_, newValue interface{}) {
 
-	errContainer := dom.QuerySelector(`[data-dock="errorMessage"]`)
-	errContainer.Set("innerHTML", "")
-	dom.AddClass(errContainer, "hidden")
-
-	errFields := newValue.(*ErrorManagerFields)
-	if errFields == nil {
+	container := comp.GetContainer("errorMessage")
+	if container.IsNull() {
+		dom.ConsoleError("overlay component container is null", "errorComp")
 		return
 	}
+	dom.AddClass(container, "hidden")
+	dom.SetInnerHTML(container, "")
+
+	errFields := newValue.(ErrorManagerFields)
 
 	errMgr := NewErrorManager(comp.di)
-	errMgr.SetNamespace("auth/auth/errorMsg")
 	errMgr.SetFields(errFields)
 
 	if err := errMgr.Render(); err != nil {
@@ -133,10 +162,10 @@ func (comp *LoginComponent) stateErrored(_, newValue interface{}) {
 		return
 	}
 
-	if err := errMgr.Mount(&errContainer); err != nil {
+	if err := errMgr.Mount(&container); err != nil {
 		dom.ConsoleError("Cannot mount errMsg", err.Error())
 		return
 	}
 
-	dom.RemoveClass(errContainer, "hidden")
+	dom.RemoveClass(container, "hidden")
 }

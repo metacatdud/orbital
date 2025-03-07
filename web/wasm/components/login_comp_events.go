@@ -19,7 +19,7 @@ func (comp *LoginComponent) eventLoginSuccess() {
 }
 
 func (comp *LoginComponent) eventLoginFail(errRes *orbital.ErrorResponse) {
-	comp.di.State().Set("state:auth:errored", &ErrorManagerFields{
+	comp.di.State().Set("state:auth:errored", ErrorManagerFields{
 		Type:    errRes.Type,
 		Message: errRes.Msg,
 	})

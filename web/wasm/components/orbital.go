@@ -1,26 +1,32 @@
 package components
 
 import (
+	"bytes"
 	"errors"
 	"orbital/web/wasm/pkg/component"
 	"orbital/web/wasm/pkg/deps"
 	"orbital/web/wasm/pkg/dom"
+	"orbital/web/wasm/pkg/state"
 	"syscall/js"
 )
 
 type OrbitalComponent struct {
 	di           *deps.Dependency
-	element      *js.Value
+	docks        map[string]js.Value
+	element      js.Value
 	unwatchState []func()
+	state        *state.State
 }
 
 // Implementation checklist
-var _ component.Component = (*OrbitalComponent)(nil)
+var _ component.ContainerComponent = (*OrbitalComponent)(nil)
 var _ component.StateControl = (*OrbitalComponent)(nil)
 
 func NewOrbitalComponent(di *deps.Dependency) *OrbitalComponent {
 	o := &OrbitalComponent{
-		di: di,
+		di:    di,
+		docks: make(map[string]js.Value),
+		state: di.State(),
 	}
 
 	o.init()
@@ -29,14 +35,27 @@ func NewOrbitalComponent(di *deps.Dependency) *OrbitalComponent {
 }
 
 func (comp *OrbitalComponent) ID() string {
-	return ""
+	return "orbital"
 }
 
 func (comp *OrbitalComponent) Namespace() string {
-	return ""
+	return "orbital/main/orbital"
 }
 
 func (comp *OrbitalComponent) Render() error {
+	tpl, err := comp.di.TplRegistry().Get(comp.Namespace())
+	if err != nil {
+		return err
+	}
+
+	var buf bytes.Buffer
+	if err = tpl.Execute(&buf, nil); err != nil {
+		return err
+	}
+
+	comp.element = dom.CreateElementFromString(buf.String())
+	comp.SetContainers()
+
 	return nil
 }
 
@@ -50,8 +69,11 @@ func (comp *OrbitalComponent) Mount(container *js.Value) error {
 		dom.RemoveElement(loadingElem)
 	}
 
-	// For this component only the container already exist as the #root div from index.html
-	comp.element = container
+	if comp.element.IsNull() {
+		return errors.New("element is missing")
+	}
+
+	dom.AppendChild(*container, comp.element)
 
 	return nil
 }
@@ -62,7 +84,7 @@ func (comp *OrbitalComponent) Unmount() error {
 }
 
 func (comp *OrbitalComponent) BindStateWatch() {
-	unwatchAuthFn := comp.di.State().Watch("state:orbital:authenticated", func(oldValue, newValue interface{}) {
+	unwatchAuthFn := comp.state.Watch("state:orbital:authenticated", func(oldValue, newValue interface{}) {
 		if newValue.(bool) {
 			comp.renderDashboard()
 			return
@@ -80,48 +102,81 @@ func (comp *OrbitalComponent) UnbindStateWatch() {
 	}
 }
 
+// The following two methods are helpers for docking various components into
+// docking areas of the components it servers
+
+func (comp *OrbitalComponent) GetContainer(name string) js.Value {
+	container, ok := comp.docks[name]
+	if !ok {
+		return js.Null()
+	}
+
+	if container.IsNull() {
+		return js.Null()
+	}
+
+	return container
+}
+
+func (comp *OrbitalComponent) SetContainers() {
+	if comp.element.IsNull() {
+		dom.ConsoleError("element is missing", comp.ID())
+		return
+	}
+
+	// Set docking points
+	// TODO: Improve validation and make sure these are not null
+	dockingAreas := dom.QuerySelectorAllFromElement(comp.element, `[data-dock]`)
+	if len(dockingAreas) == 0 {
+		return
+	}
+
+	for _, area := range dockingAreas {
+		areaName := area.Get("dataset").Get("dock").String()
+		comp.docks[areaName] = area
+	}
+}
+
 func (comp *OrbitalComponent) init() {
 	comp.BindStateWatch()
 }
 
 func (comp *OrbitalComponent) renderLogin() {
-	if comp.element == nil || comp.element.IsUndefined() {
-		dom.ConsoleError("[OrbitalComponent] not mounted properly")
+	// TODO: Implement login
+
+	overlayComponent := NewOverlayComponent(comp.di)
+
+	overlayContainer := comp.GetContainer("overlay")
+	if overlayContainer.IsNull() {
+		dom.ConsoleError("overlay component container is null", "login")
 		return
 	}
+	dom.SetInnerHTML(overlayContainer, "")
 
-	comp.element.Set("innerHTML", "")
+	_ = overlayComponent.Render()
+	_ = overlayComponent.Mount(&overlayContainer)
 
-	loginComponent := NewLoginComponent(comp.di)
-
-	if err := loginComponent.Render(); err != nil {
-		dom.ConsoleError("[OrbitalComponent] Cannot render LoginComponent", err.Error())
+	taskbarComponent := NewTaskbarComponent(comp.di)
+	taskbarContainer := comp.GetContainer("taskbar")
+	if taskbarContainer.IsNull() {
+		dom.ConsoleError("taskbar component container is null", "login")
 		return
 	}
+	dom.SetInnerHTML(taskbarContainer, "")
 
-	if err := loginComponent.Mount(comp.element); err != nil {
-		dom.ConsoleError("[OrbitalComponent] Cannot mount LoginComponent", err.Error())
-	}
+	_ = taskbarComponent.Render()
+	_ = taskbarComponent.Mount(&taskbarContainer)
+
+	comp.state.Set("state:overlay:activeComponent", "login")
+	comp.state.Set("state:taskbar:currentMode", "guest")
 }
 
 func (comp *OrbitalComponent) renderDashboard() {
-	if comp.element == nil || comp.element.IsUndefined() {
-		dom.ConsoleError("[OrbitalComponent] not mounted properly")
-		return
-	}
-
-	comp.element.Set("innerHTML", "")
-	dashComponent := NewDashboardComponent(comp.di)
-
-	if err := dashComponent.Render(); err != nil {
-		dom.ConsoleError("[OrbitalComponent] Cannot render DashboardComponent", err.Error())
-	}
-
-	if err := dashComponent.Mount(comp.element); err != nil {
-		dom.ConsoleError("[OrbitalComponent] Cannot mount DashboardComponent", err.Error())
-	}
+	// TODO: Implement dashboard
 }
 
 func (comp *OrbitalComponent) renderRegister() {
 	// TODO: Implement renderRegister
 }
+
+func (comp *OrbitalComponent) updateTaskbar() {}

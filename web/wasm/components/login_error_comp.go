@@ -6,7 +6,6 @@ import (
 	"orbital/web/wasm/pkg/component"
 	"orbital/web/wasm/pkg/deps"
 	"orbital/web/wasm/pkg/dom"
-	"orbital/web/wasm/pkg/state"
 	"syscall/js"
 )
 
@@ -30,10 +29,9 @@ func (fields *ErrorManagerFields) ToMap() map[string]interface{} {
 }
 
 type ErrorManager struct {
-	di        *deps.Dependency
-	fields    *ErrorManagerFields
-	namespace string
-	element   js.Value
+	di      *deps.Dependency
+	fields  ErrorManagerFields
+	element js.Value
 }
 
 var _ component.Component = (*ErrorManager)(nil)
@@ -41,7 +39,7 @@ var _ component.Component = (*ErrorManager)(nil)
 func NewErrorManager(di *deps.Dependency) *ErrorManager {
 	comp := &ErrorManager{
 		di:     di,
-		fields: &ErrorManagerFields{},
+		fields: ErrorManagerFields{},
 	}
 
 	comp.init()
@@ -77,7 +75,7 @@ func (comp *ErrorManager) ID() string {
 }
 
 func (comp *ErrorManager) Namespace() string {
-	return comp.namespace
+	return "auth/auth/errorMsg"
 }
 
 func (comp *ErrorManager) Render() error {
@@ -86,14 +84,8 @@ func (comp *ErrorManager) Render() error {
 		return err
 	}
 
-	// hackish merge to check proper state and fields merging
-	mergedData := state.MergeStateWithData(
-		comp.di.State().GetAll(),
-		comp.fields.ToMap(),
-	)
-
 	var buf bytes.Buffer
-	if err = tpl.Execute(&buf, mergedData); err != nil {
+	if err = tpl.Execute(&buf, comp.fields.ToMap()); err != nil {
 		return err
 	}
 
@@ -102,12 +94,8 @@ func (comp *ErrorManager) Render() error {
 	return nil
 }
 
-func (comp *ErrorManager) SetFields(fields *ErrorManagerFields) {
+func (comp *ErrorManager) SetFields(fields ErrorManagerFields) {
 	comp.fields = fields
-}
-
-func (comp *ErrorManager) SetNamespace(namespace string) {
-	comp.namespace = namespace
 }
 
 func (comp *ErrorManager) init() {}
