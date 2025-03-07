@@ -45,16 +45,11 @@ func (dep *Dependency) Ws() *transport.WsConn {
 }
 
 func NewDependency(pkgs Packages) (*Dependency, error) {
-	tplRegistry, err := templates.NewRegistry()
-	if err != nil {
-		return nil, err
-	}
-
 	return &Dependency{
 		events:      pkgs.Events,
 		state:       pkgs.State,
 		storage:     pkgs.Storage,
-		tplRegistry: tplRegistry,
+		tplRegistry: pkgs.TplRegistry,
 		ws:          pkgs.Ws,
 	}, nil
 }

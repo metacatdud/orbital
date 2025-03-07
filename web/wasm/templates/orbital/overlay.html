@@ -1,0 +1,15 @@
+<template data-name="overlay">
+    <div id="overlay" class="hide">
+        <div class="header">
+            <span class="title">
+                <i class="fas {{.icon}} mr-2"></i>
+                {{.title}}
+            </span>
+            <div class="space-x-1">
+                <button data-action="closeOverlay" class="px-3 py-0.5 hover:bg-os-accent dark:hover:bg-terminal-accent transition-colors duration-150">×</button>
+            </div>
+        </div>
+        <div class="body" data-dock="overlayData"></div>
+        <div class="footer"></div>
+    </div>
+</template>

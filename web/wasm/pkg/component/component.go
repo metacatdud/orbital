@@ -7,10 +7,16 @@ import (
 // Component interface for basic components
 type Component interface {
 	ID() string
+	Namespace() string
 	Mount(container *js.Value) error
 	Unmount() error
-	Namespace() string
 	Render() error
+}
+
+type ContainerComponent interface {
+	Component
+	GetContainer(name string) js.Value
+	SetContainers()
 }
 
 // StateControl implementation for components with state manager
