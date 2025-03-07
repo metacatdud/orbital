@@ -49,16 +49,19 @@ func (app *App) init() {
 func (app *App) eventAppReady() {
 	dom.ConsoleLog("[orbital] Ready")
 
-	rootEl := dom.QuerySelector("#app")
+	rootEl := dom.QuerySelector("#rootEl")
 	if rootEl.IsNull() {
 		dom.ConsoleError("Element rootEl doesn't exist")
 		return
 	}
 
 	app.rootComp = components.NewOrbitalComponent(app.di)
-
+	if err := app.rootComp.Render(); err != nil {
+		dom.ConsoleError("[orbital] Cannot render root component", err.Error())
+	}
+	
 	if err := app.rootComp.Mount(&rootEl); err != nil {
-		dom.ConsoleError("Cannot mount to rootEl", err.Error())
+		dom.ConsoleError("[orbital] Cannot mount to rootEl", err.Error())
 		return
 	}
 

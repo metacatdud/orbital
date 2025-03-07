@@ -19,6 +19,11 @@ func main() {
 	select {}
 }
 
+type User struct {
+	Name string
+	Age  int
+}
+
 // bootstrapApp load the entrypoint
 func bootstrapApp(_ js.Value, _ []js.Value) interface{} {
 

@@ -30,7 +30,7 @@ func (auth *Auth) eventLogin(secretKey string) {
 			Msg:  "private key cannot be empty",
 		}
 
-		auth.events.Emit("auth::login.fail", loginErr)
+		auth.events.Emit("evt:auth:login:fail", loginErr)
 		return
 	}
 
@@ -40,7 +40,7 @@ func (auth *Auth) eventLogin(secretKey string) {
 			Type: "auth.unauthorized",
 			Msg:  "private key cannot be parsed",
 		}
-		auth.events.Emit("auth::login.fail", loginErr)
+		auth.events.Emit("evt:auth:login:fail", loginErr)
 		return
 	}
 
@@ -54,7 +54,7 @@ func (auth *Auth) eventLogin(secretKey string) {
 			Type: "auth.unknown",
 			Msg:  "cannot marshal login message",
 		}
-		auth.events.Emit("auth::login.fail", loginErr)
+		auth.events.Emit("evt:auth:login:fail", loginErr)
 		return
 	}
 
@@ -71,7 +71,7 @@ func (auth *Auth) eventLogin(secretKey string) {
 			Msg:  "private key not valid ed25519 key",
 		}
 
-		auth.events.Emit("auth::login.fail", loginErr)
+		auth.events.Emit("evt:auth:login:fail", loginErr)
 	}
 
 	reqBin, err := json.Marshal(req)
@@ -80,7 +80,7 @@ func (auth *Auth) eventLogin(secretKey string) {
 			Type: "auth.unknown",
 			Msg:  "cannot marshal request message",
 		}
-		auth.events.Emit("auth::login.fail", loginErr)
+		auth.events.Emit("evt:auth:login:fail", loginErr)
 	}
 
 	var async transport.Async
@@ -108,7 +108,7 @@ func (auth *Auth) eventLogin(secretKey string) {
 				Msg:  loginRes.Error.Msg,
 			}
 
-			auth.events.Emit("auth::login.fail", loginErr)
+			auth.events.Emit("evt:auth:login:fail", loginErr)
 			return
 		}
 

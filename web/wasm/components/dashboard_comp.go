@@ -13,9 +13,10 @@ import (
 )
 
 type DashboardComponent struct {
-	di      *deps.Dependency
-	events  *events.Event
-	element js.Value
+	di               *deps.Dependency
+	events           *events.Event
+	element          js.Value
+	unsubscribeEvent []func()
 }
 
 var _ component.Component = (*DashboardComponent)(nil)
@@ -65,6 +66,7 @@ func (comp *DashboardComponent) Unmount() error {
 	}
 
 	comp.unbindUIEvents()
+	comp.UnbindEvents()
 
 	return nil
 }
@@ -86,13 +88,17 @@ func (comp *DashboardComponent) Render() error {
 }
 
 func (comp *DashboardComponent) BindEvents() {
-	comp.events.On("evt:machines:update", comp.eventMachine)
-	comp.events.On("evt:machines:error", comp.eventMachineError)
+	unsubEvMaUpd := comp.events.On("evt:machines:update", comp.eventMachine)
+	comp.unsubscribeEvent = append(comp.unsubscribeEvent, unsubEvMaUpd)
+
+	unsubEvMaErr := comp.events.On("evt:machines:error", comp.eventMachineError)
+	comp.unsubscribeEvent = append(comp.unsubscribeEvent, unsubEvMaErr)
 }
 
 func (comp *DashboardComponent) UnbindEvents() {
-	comp.events.Off("evt:machines:update", comp.eventMachine)
-	comp.events.Off("evt:machines:error", comp.eventMachineError)
+	for _, unsubEv := range comp.unsubscribeEvent {
+		unsubEv()
+	}
 }
 
 func (comp *DashboardComponent) init() {
@@ -113,6 +119,23 @@ func (comp *DashboardComponent) unbindUIEvents() {
 
 func (comp *DashboardComponent) eventMachine(machine *domain.Machine) {
 	dom.ConsoleLog("Event machines", machine)
+
+	//TODO: Parse data and show the template
+	dashboardContainer := dom.QuerySelector(`[data-dock="dashboardContainer"]`)
+	dashboardContainer.Set("innerHTML", "")
+
+	machineComp := NewMachineComponent(comp.di)
+	// TODO: Parse data and set fields here
+
+	if err := machineComp.Render(); err != nil {
+		dom.ConsoleLog("Machine comp render error", err.Error())
+	}
+
+	if err := machineComp.Mount(&dashboardContainer); err != nil {
+		dom.ConsoleError("Machine comp mount error", err.Error())
+		return
+	}
+
 }
 
 func (comp *DashboardComponent) eventMachineError(err *orbital.ErrorResponse) {
@@ -150,5 +173,6 @@ func (comp *DashboardComponent) uiEventLogout(_ js.Value, _ []js.Value) interfac
 	_ = authRepo.Remove()
 
 	comp.di.State().Set("state:orbital:authenticated", false)
+	comp.Unmount()
 	return nil
 }

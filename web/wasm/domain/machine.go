@@ -5,6 +5,17 @@ import (
 	"fmt"
 )
 
+type Disk struct {
+	Name  string `json:"name"`
+	Total uint64 `json:"total"`
+	Free  uint64 `json:"free"`
+}
+
+type DiskInfo struct {
+	Total uint64 `json:"total"`
+	Disks []Disk `json:"disks"`
+}
+
 type Machine struct {
 	HostID          string   `json:"hostId"`
 	Hostname        string   `json:"hostname"`
@@ -24,6 +35,7 @@ type Machine struct {
 	UsedPercent     string   `json:"usedPercent"`
 	NetType         string   `json:"netType"`
 	NetName         string   `json:"netName"`
+	Disks           DiskInfo `json:"disks"`
 }
 
 type Machines []Machine
@@ -76,6 +88,8 @@ func createMachineInfoFromRaw(raw rawMachine) *Machine {
 	m.NetType = raw.Net.Type
 	m.NetName = raw.Net.Name
 
+	m.Disks = raw.Disks
+
 	return m
 }
 
@@ -92,6 +106,8 @@ type rawMachine struct {
 		KernelVersion   string `json:"kernelVersion"`
 		KernelArch      string `json:"kernelArch"`
 	} `json:"info"`
+
+	Disks DiskInfo `json:"disks"`
 
 	CPU struct {
 		TotalCores int       `json:"totalCores"`

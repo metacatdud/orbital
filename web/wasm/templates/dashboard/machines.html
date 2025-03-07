@@ -1,0 +1,301 @@
+<template data-name="machinesList">
+    <div class="min-h-screen p-4 font-mono">
+<!--        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">-->
+<!--            <div class="flex items-center justify-center p-4 font-mono">-->
+<!--                <div class="w-full max-w-md bg-gray-900 border border-green-700 shadow-md p-4 text-green-500">-->
+<!--                    <div class="flex items-center space-x-3 pb-3 border-b border-green-800">-->
+<!--                        <i class="fas fa-server text-green-600"></i>-->
+<!--                        <h2 class="text-lg">-->
+<!--                            Hostname: <span id="hostname" class="text-green-400">your-hostname</span>-->
+<!--                        </h2>-->
+<!--                    </div>-->
+
+<!--                    <div class="mt-3">-->
+<!--                        <div class="flex items-center space-x-2 mb-2">-->
+<!--                            <i class="fas fa-memory text-green-600"></i>-->
+<!--                            <h3 class="text-md">Memory Usage</h3>-->
+<!--                        </div>-->
+<!--                        <div class="flex justify-between text-xs mb-1">-->
+<!--                            <span>Used: <span id="usedPercent" class="text-green-400">0.00%</span></span>-->
+<!--                            <span>Free: <span id="freePercent" class="text-green-400">0.00%</span></span>-->
+<!--                        </div>-->
+<!--                        <div class="w-full bg-gray-800 h-2 border border-green-800">-->
+<!--                            <div id="memoryProgress" class="bg-green-700 h-full" style="width:45%"></div>-->
+<!--                        </div>-->
+<!--                        <div class="mt-1 text-xs flex justify-between text-green-600">-->
+<!--                            <span>Total: <span id="totalMemGB" class="text-green-400">0.00</span> GB</span>-->
+<!--                            <span>Free: <span id="freeMemGB" class="text-green-400">0.00</span> GB</span>-->
+<!--                        </div>-->
+<!--                    </div>-->
+
+<!--                    <div class="mt-4">-->
+<!--                        <div class="flex items-center space-x-2 mb-2">-->
+<!--                            <i class="fas fa-hard-drive text-green-600"></i>-->
+<!--                            <h3 class="text-md">Disks</h3>-->
+<!--                        </div>-->
+<!--                        <div id="disks" class="space-y-2">-->
+<!--                            <div>-->
+<!--                                <div class="flex justify-between text-xs mb-1">-->
+<!--                                    <span class="truncate">/dev/sda1</span>-->
+<!--                                    <span>Used: 60%</span>-->
+<!--                                </div>-->
+<!--                                <div class="w-full bg-gray-800 h-1.5 border border-green-800">-->
+<!--                                    <div class="bg-green-700 h-full" style="width: 60%"></div>-->
+<!--                                </div>-->
+<!--                            </div>-->
+
+<!--                            <div>-->
+<!--                                <div class="flex justify-between text-xs mb-1">-->
+<!--                                    <span class="truncate">/dev/sdb1</span>-->
+<!--                                    <span>Used: 75%</span>-->
+<!--                                </div>-->
+<!--                                <div class="w-full bg-gray-800 h-1.5 border border-green-800">-->
+<!--                                    <div class="bg-green-700 h-full" style=" width:75%"></div>-->
+<!--                                </div>-->
+<!--                            </div>-->
+
+<!--                            <div>-->
+<!--                                <div class="flex justify-between text-xs mb-1">-->
+<!--                                    <span class="truncate">/dev/sdc1</span>-->
+<!--                                    <span>Used: 90%</span>-->
+<!--                                </div>-->
+<!--                                <div class="w-full bg-gray-800 h-1.5 border border-green-800">-->
+<!--                                    <div class="bg-green-700 h-full" style="width: 90%"></div>-->
+<!--                                </div>-->
+<!--                            </div>-->
+<!--                        </div>-->
+<!--                    </div>-->
+
+<!--                    <div class="flex items-center space-x-2 mt-4 pt-2 border-t border-green-800">-->
+<!--                        <i class="fas fa-wifi text-green-600"></i>-->
+<!--                        <span id="networkName" class="text-sm">-->
+<!--                    Network: <span class="text-green-400">WiFi</span> - <span class="text-green-400">your-network</span>-->
+<!--                  </span>-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--            </div>-->
+
+<!--            <div class=" flex items-center justify-center p-4 font-mono">-->
+<!--                <div class="w-full max-w-md bg-gray-900 border border-green-700 shadow-md p-4 text-green-500">-->
+<!--                    <div class="flex items-center space-x-3 pb-3 border-b border-green-800">-->
+<!--                        <i class="fas fa-server text-green-600"></i>-->
+<!--                        <h2 class="text-lg">-->
+<!--                            Hostname: <span id="hostname" class="text-green-400">your-hostname</span>-->
+<!--                        </h2>-->
+<!--                    </div>-->
+
+<!--                    <div class="mt-3">-->
+<!--                        <div class="flex items-center space-x-2 mb-2">-->
+<!--                            <i class="fas fa-memory text-green-600"></i>-->
+<!--                            <h3 class="text-md">Memory Usage</h3>-->
+<!--                        </div>-->
+<!--                        <div class="flex justify-between text-xs mb-1">-->
+<!--                            <span>Used: <span id="usedPercent" class="text-green-400">0.00%</span></span>-->
+<!--                            <span>Free: <span id="freePercent" class="text-green-400">0.00%</span></span>-->
+<!--                        </div>-->
+<!--                        <div class="w-full bg-gray-800 h-2 border border-green-800">-->
+<!--                            <div id="memoryProgress" class="bg-green-700 h-full" style="width:45%"></div>-->
+<!--                        </div>-->
+<!--                        <div class="mt-1 text-xs flex justify-between text-green-600">-->
+<!--                            <span>Total: <span id="totalMemGB" class="text-green-400">0.00</span> GB</span>-->
+<!--                            <span>Free: <span id="freeMemGB" class="text-green-400">0.00</span> GB</span>-->
+<!--                        </div>-->
+<!--                    </div>-->
+
+<!--                    <div class="mt-4">-->
+<!--                        <div class="flex items-center space-x-2 mb-2">-->
+<!--                            <i class="fas fa-hard-drive text-green-600"></i>-->
+<!--                            <h3 class="text-md">Disks</h3>-->
+<!--                        </div>-->
+<!--                        <div id="disks" class="space-y-2">-->
+<!--                            <div>-->
+<!--                                <div class="flex justify-between text-xs mb-1">-->
+<!--                                    <span class="truncate">/dev/sda1</span>-->
+<!--                                    <span>Used: 60%</span>-->
+<!--                                </div>-->
+<!--                                <div class="w-full bg-gray-800 h-1.5 border border-green-800">-->
+<!--                                    <div class="bg-green-700 h-full" style="width: 60%"></div>-->
+<!--                                </div>-->
+<!--                            </div>-->
+
+<!--                            <div>-->
+<!--                                <div class="flex justify-between text-xs mb-1">-->
+<!--                                    <span class="truncate">/dev/sdb1</span>-->
+<!--                                    <span>Used: 75%</span>-->
+<!--                                </div>-->
+<!--                                <div class="w-full bg-gray-800 h-1.5 border border-green-800">-->
+<!--                                    <div class="bg-green-700 h-full" style=" width:75%"></div>-->
+<!--                                </div>-->
+<!--                            </div>-->
+
+<!--                            <div>-->
+<!--                                <div class="flex justify-between text-xs mb-1">-->
+<!--                                    <span class="truncate">/dev/sdc1</span>-->
+<!--                                    <span>Used: 90%</span>-->
+<!--                                </div>-->
+<!--                                <div class="w-full bg-gray-800 h-1.5 border border-green-800">-->
+<!--                                    <div class="bg-green-700 h-full" style="width: 90%"></div>-->
+<!--                                </div>-->
+<!--                            </div>-->
+<!--                        </div>-->
+<!--                    </div>-->
+
+<!--                    <div class="flex items-center space-x-2 mt-4 pt-2 border-t border-green-800">-->
+<!--                        <i class="fas fa-wifi text-green-600"></i>-->
+<!--                        <span id="networkName" class="text-sm">-->
+<!--                    Network: <span class="text-green-400">WiFi</span> - <span class="text-green-400">your-network</span>-->
+<!--                  </span>-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--            </div>-->
+
+<!--            <div class="flex items-center justify-center p-4 font-mono">-->
+<!--                <div class="w-full max-w-md bg-gray-900 border border-green-700 shadow-md p-4 text-green-500">-->
+<!--                    <div class="flex items-center space-x-3 pb-3 border-b border-green-800">-->
+<!--                        <i class="fas fa-server text-green-600"></i>-->
+<!--                        <h2 class="text-lg">-->
+<!--                            Hostname: <span id="hostname" class="text-green-400">your-hostname</span>-->
+<!--                        </h2>-->
+<!--                    </div>-->
+
+<!--                    <div class="mt-3">-->
+<!--                        <div class="flex items-center space-x-2 mb-2">-->
+<!--                            <i class="fas fa-memory text-green-600"></i>-->
+<!--                            <h3 class="text-md">Memory Usage</h3>-->
+<!--                        </div>-->
+<!--                        <div class="flex justify-between text-xs mb-1">-->
+<!--                            <span>Used: <span id="usedPercent" class="text-green-400">0.00%</span></span>-->
+<!--                            <span>Free: <span id="freePercent" class="text-green-400">0.00%</span></span>-->
+<!--                        </div>-->
+<!--                        <div class="w-full bg-gray-800 h-2 border border-green-800">-->
+<!--                            <div id="memoryProgress" class="bg-green-700 h-full" style="width:45%"></div>-->
+<!--                        </div>-->
+<!--                        <div class="mt-1 text-xs flex justify-between text-green-600">-->
+<!--                            <span>Total: <span id="totalMemGB" class="text-green-400">0.00</span> GB</span>-->
+<!--                            <span>Free: <span id="freeMemGB" class="text-green-400">0.00</span> GB</span>-->
+<!--                        </div>-->
+<!--                    </div>-->
+
+<!--                    <div class="mt-4">-->
+<!--                        <div class="flex items-center space-x-2 mb-2">-->
+<!--                            <i class="fas fa-hard-drive text-green-600"></i>-->
+<!--                            <h3 class="text-md">Disks</h3>-->
+<!--                        </div>-->
+<!--                        <div id="disks" class="space-y-2">-->
+<!--                            <div>-->
+<!--                                <div class="flex justify-between text-xs mb-1">-->
+<!--                                    <span class="truncate">/dev/sda1</span>-->
+<!--                                    <span>Used: 60%</span>-->
+<!--                                </div>-->
+<!--                                <div class="w-full bg-gray-800 h-1.5 border border-green-800">-->
+<!--                                    <div class="bg-green-700 h-full" style="width: 60%"></div>-->
+<!--                                </div>-->
+<!--                            </div>-->
+
+<!--                            <div>-->
+<!--                                <div class="flex justify-between text-xs mb-1">-->
+<!--                                    <span class="truncate">/dev/sdb1</span>-->
+<!--                                    <span>Used: 75%</span>-->
+<!--                                </div>-->
+<!--                                <div class="w-full bg-gray-800 h-1.5 border border-green-800">-->
+<!--                                    <div class="bg-green-700 h-full" style=" width:75%"></div>-->
+<!--                                </div>-->
+<!--                            </div>-->
+
+<!--                            <div>-->
+<!--                                <div class="flex justify-between text-xs mb-1">-->
+<!--                                    <span class="truncate">/dev/sdc1</span>-->
+<!--                                    <span>Used: 90%</span>-->
+<!--                                </div>-->
+<!--                                <div class="w-full bg-gray-800 h-1.5 border border-green-800">-->
+<!--                                    <div class="bg-green-700 h-full" style="width: 90%"></div>-->
+<!--                                </div>-->
+<!--                            </div>-->
+<!--                        </div>-->
+<!--                    </div>-->
+
+<!--                    <div class="flex items-center space-x-2 mt-4 pt-2 border-t border-green-800">-->
+<!--                        <i class="fas fa-wifi text-green-600"></i>-->
+<!--                        <span id="networkName" class="text-sm">-->
+<!--                    Network: <span class="text-green-400">WiFi</span> - <span class="text-green-400">your-network</span>-->
+<!--                  </span>-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--            </div>-->
+
+<!--            <div class="flex items-center justify-center p-4 font-mono">-->
+<!--                <div class="w-full max-w-md bg-gray-900 border border-green-700 shadow-md p-4 text-green-500">-->
+<!--                    <div class="flex items-center space-x-3 pb-3 border-b border-green-800">-->
+<!--                        <i class="fas fa-server text-green-600"></i>-->
+<!--                        <h2 class="text-lg">-->
+<!--                            Hostname: <span id="hostname" class="text-green-400">your-hostname</span>-->
+<!--                        </h2>-->
+<!--                    </div>-->
+
+<!--                    <div class="mt-3">-->
+<!--                        <div class="flex items-center space-x-2 mb-2">-->
+<!--                            <i class="fas fa-memory text-green-600"></i>-->
+<!--                            <h3 class="text-md">Memory Usage</h3>-->
+<!--                        </div>-->
+<!--                        <div class="flex justify-between text-xs mb-1">-->
+<!--                            <span>Used: <span id="usedPercent" class="text-green-400">0.00%</span></span>-->
+<!--                            <span>Free: <span id="freePercent" class="text-green-400">0.00%</span></span>-->
+<!--                        </div>-->
+<!--                        <div class="w-full bg-gray-800 h-2 border border-green-800">-->
+<!--                            <div id="memoryProgress" class="bg-green-700 h-full" style="width:45%"></div>-->
+<!--                        </div>-->
+<!--                        <div class="mt-1 text-xs flex justify-between text-green-600">-->
+<!--                            <span>Total: <span id="totalMemGB" class="text-green-400">0.00</span> GB</span>-->
+<!--                            <span>Free: <span id="freeMemGB" class="text-green-400">0.00</span> GB</span>-->
+<!--                        </div>-->
+<!--                    </div>-->
+
+<!--                    <div class="mt-4">-->
+<!--                        <div class="flex items-center space-x-2 mb-2">-->
+<!--                            <i class="fas fa-hard-drive text-green-600"></i>-->
+<!--                            <h3 class="text-md">Disks</h3>-->
+<!--                        </div>-->
+<!--                        <div id="disks" class="space-y-2">-->
+<!--                            <div>-->
+<!--                                <div class="flex justify-between text-xs mb-1">-->
+<!--                                    <span class="truncate">/dev/sda1</span>-->
+<!--                                    <span>Used: 60%</span>-->
+<!--                                </div>-->
+<!--                                <div class="w-full bg-gray-800 h-1.5 border border-green-800">-->
+<!--                                    <div class="bg-green-700 h-full" style="width: 60%"></div>-->
+<!--                                </div>-->
+<!--                            </div>-->
+
+<!--                            <div>-->
+<!--                                <div class="flex justify-between text-xs mb-1">-->
+<!--                                    <span class="truncate">/dev/sdb1</span>-->
+<!--                                    <span>Used: 75%</span>-->
+<!--                                </div>-->
+<!--                                <div class="w-full bg-gray-800 h-1.5 border border-green-800">-->
+<!--                                    <div class="bg-green-700 h-full" style=" width:75%"></div>-->
+<!--                                </div>-->
+<!--                            </div>-->
+
+<!--                            <div>-->
+<!--                                <div class="flex justify-between text-xs mb-1">-->
+<!--                                    <span class="truncate">/dev/sdc1</span>-->
+<!--                                    <span>Used: 90%</span>-->
+<!--                                </div>-->
+<!--                                <div class="w-full bg-gray-800 h-1.5 border border-green-800">-->
+<!--                                    <div class="bg-green-700 h-full" style="width: 90%"></div>-->
+<!--                                </div>-->
+<!--                            </div>-->
+<!--                        </div>-->
+<!--                    </div>-->
+
+<!--                    <div class="flex items-center space-x-2 mt-4 pt-2 border-t border-green-800">-->
+<!--                        <i class="fas fa-wifi text-green-600"></i>-->
+<!--                        <span id="networkName" class="text-sm">-->
+<!--                    Network: <span class="text-green-400">WiFi</span> - <span class="text-green-400">your-network</span>-->
+<!--                  </span>-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--            </div>-->
+<!--        </div>-->
+    </div>
+</template>
