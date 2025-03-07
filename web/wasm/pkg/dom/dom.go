@@ -5,8 +5,12 @@ import (
 	"syscall/js"
 )
 
+func Document() js.Value {
+	return js.Global().Get("document")
+}
+
 func QuerySelector(selector string) js.Value {
-	elem := js.Global().Get("document").Call("querySelector", selector)
+	elem := Document().Call("querySelector", selector)
 	if elem.Truthy() {
 		return elem
 	}
@@ -14,7 +18,35 @@ func QuerySelector(selector string) js.Value {
 }
 
 func QuerySelectorAll(selector string) []js.Value {
-	nodeList := js.Global().Get("document").Call("querySelectorAll", selector)
+	nodeList := Document().Call("querySelectorAll", selector)
+	length := nodeList.Length()
+
+	elements := make([]js.Value, length)
+	for i := 0; i < length; i++ {
+		elements[i] = nodeList.Index(i)
+	}
+
+	return elements
+}
+
+func QuerySelectorFromElement(parent js.Value, selector string) js.Value {
+	if parent.IsNull() {
+		return js.Null()
+	}
+
+	elem := parent.Call("querySelector", selector)
+	if elem.Truthy() {
+		return elem
+	}
+	return js.Null()
+}
+
+func QuerySelectorAllFromElement(parent js.Value, selector string) []js.Value {
+	if parent.IsNull() {
+		return []js.Value{}
+	}
+
+	nodeList := parent.Call("querySelectorAll", selector)
 	length := nodeList.Length()
 
 	elements := make([]js.Value, length)
@@ -26,22 +58,21 @@ func QuerySelectorAll(selector string) []js.Value {
 }
 
 func CreateElement(tag string) js.Value {
-	return js.Global().Get("document").Call("createElement", tag)
+	return Document().Call("createElement", tag)
 }
 
 func CreateElementFromString(htmlStr string) js.Value {
-	doc := js.Global().Get("document")
 	tag := extractTagName(htmlStr)
 
 	var container js.Value
 
 	switch tag {
 	case "tr", "td", "th":
-		container = doc.Call("createElement", "tbody")
+		container = Document().Call("createElement", "tbody")
 	case "option":
-		container = doc.Call("createElement", "select")
+		container = Document().Call("createElement", "select")
 	default:
-		container = doc.Call("createElement", "div")
+		container = Document().Call("createElement", "div")
 	}
 
 	container.Set("innerHTML", htmlStr)
@@ -114,5 +145,11 @@ func AddClass(element js.Value, className string) {
 func RemoveClass(element js.Value, className string) {
 	if element.Truthy() {
 		element.Get("classList").Call("remove", className)
+	}
+}
+
+func ToggleClass(element js.Value, className string) {
+	if element.Truthy() {
+		element.Get("classList").Call("toggle", className)
 	}
 }

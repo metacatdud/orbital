@@ -74,7 +74,6 @@ func (s *State) Set(key string, value interface{}) {
 
 		// Skip update if the values are deeply equal.
 		if reflect.DeepEqual(oldItem.value, value) {
-			dom.ConsoleError("oldValue and newValue are not the same")
 			s.mu.Unlock()
 			return
 		}

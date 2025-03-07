@@ -45,15 +45,19 @@ func (e *Event) Remove(eventName string) {
 }
 
 func (e *Event) Emit(eventName string, params ...interface{}) {
+
 	e.mu.RLock()
+
 	handlers, ok := e.listeners[eventName]
 	if !ok {
 		e.mu.RUnlock()
 		return
 	}
+
 	// Copy the slice to avoid race conditions if it gets modified during iteration.
 	copiedHandlers := make([]*Handler, len(handlers))
 	copy(copiedHandlers, handlers)
+
 	e.mu.RUnlock()
 
 	var onceIDs []uint64
@@ -81,6 +85,7 @@ func (e *Event) Emit(eventName string, params ...interface{}) {
 					newHandlers = append(newHandlers, h)
 				}
 			}
+
 			e.listeners[eventName] = newHandlers
 		}
 		e.mu.Unlock()
