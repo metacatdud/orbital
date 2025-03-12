@@ -13,12 +13,17 @@ import (
 	"path/filepath"
 )
 
+var (
+	port int
+)
+
 func newStartCmd() *cobra.Command {
 
 	startCmd := &cobra.Command{
 		Use:   "start",
 		Short: "start the node",
 		RunE: func(cmd *cobra.Command, args []string) error {
+
 			cmdHeader("start")
 
 			cfg, err := config.LoadConfig("/etc/orbital/config.yaml")
@@ -37,7 +42,7 @@ func newStartCmd() *cobra.Command {
 				WsServer:        wsSrv,
 				Ip:              fmt.Sprintf("[%s]", cfg.BindIP),
 				RootStoragePath: cfg.Datapath,
-				Port:            8100,
+				Port:            port,
 			}
 
 			orbitalNode := orbital.New(orbitalCfg)
@@ -47,6 +52,8 @@ func newStartCmd() *cobra.Command {
 			return nil
 		},
 	}
+
+	startCmd.Flags().IntVarP(&port, "port", "p", 8080, "Service port")
 
 	return startCmd
 }
