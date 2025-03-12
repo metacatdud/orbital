@@ -30,8 +30,6 @@ func (comp *TaskbarStartComponent) uiEventStartOrbitalHide(this js.Value, args [
 	e := args[0]
 	target := e.Get("target")
 
-	dom.ConsoleLog("target", target)
-
 	startMenu := dom.QuerySelector(`[data-id="startMenu"]`)
 	if !startMenu.Call("contains", target).Bool() && !target.Call("contains", startMenu).Bool() {
 		dom.AddClass(startMenu, "hide")

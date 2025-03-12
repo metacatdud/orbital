@@ -22,19 +22,19 @@ type (
 	WsMetadata struct {
 		Topic string `json:"topic"`
 	}
+
+	WsService interface {
+		Register(topic Topic)
+		Broadcast(m proto.Message)
+		SendTo(connectionID string, m proto.Message) error
+	}
+
+	WsConn struct {
+		log               *logger.Logger
+		topics            map[string]Topic
+		connectionManager *WsConnectionManager
+	}
 )
-
-type WsService interface {
-	Register(topic Topic)
-	Broadcast(m proto.Message)
-	SendTo(connectionID string, m proto.Message) error
-}
-
-type WsConn struct {
-	log               *logger.Logger
-	topics            map[string]Topic
-	connectionManager *WsConnectionManager
-}
 
 func (ws *WsConn) Register(topic Topic) {
 	ws.log.Info("Register topic", "topic", topic.Name)
