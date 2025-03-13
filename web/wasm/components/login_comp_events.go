@@ -1,7 +1,7 @@
 package components
 
 import (
-	"orbital/orbital"
+	"orbital/web/wasm/pkg/transport"
 )
 
 func (comp *LoginComponent) BindEvents() {
@@ -18,7 +18,7 @@ func (comp *LoginComponent) eventLoginSuccess() {
 	comp.di.State().Set("state:orbital:authenticated", true)
 }
 
-func (comp *LoginComponent) eventLoginFail(errRes *orbital.ErrorResponse) {
+func (comp *LoginComponent) eventLoginFail(errRes *transport.ErrorResponse) {
 	comp.di.State().Set("state:auth:errored", ErrorManagerFields{
 		Type:    errRes.Type,
 		Message: errRes.Msg,

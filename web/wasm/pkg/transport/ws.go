@@ -14,6 +14,7 @@ type (
 	WsMetadata struct {
 		Topic string `json:"topic"`
 	}
+	
 	HandlerFunc func(data []byte)
 )
 
