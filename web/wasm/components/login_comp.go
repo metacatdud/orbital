@@ -9,21 +9,10 @@ import (
 	"syscall/js"
 )
 
-type LoginComponentFields struct {
-	PrivateKey string
-}
-
-func (field *LoginComponentFields) ToMap() map[string]interface{} {
-	return map[string]interface{}{
-		"privateKey": field.PrivateKey,
-	}
-}
-
 type LoginComponent struct {
 	di           *deps.Dependency
 	docks        map[string]js.Value
 	element      js.Value
-	fields       *LoginComponentFields
 	unwatchState []func()
 }
 
@@ -33,9 +22,8 @@ var _ component.StateControl = (*LoginComponent)(nil)
 
 func NewLoginComponent(di *deps.Dependency) *LoginComponent {
 	comp := &LoginComponent{
-		di:     di,
-		docks:  make(map[string]js.Value),
-		fields: &LoginComponentFields{},
+		di:    di,
+		docks: make(map[string]js.Value),
 	}
 
 	comp.init()

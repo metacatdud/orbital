@@ -123,26 +123,25 @@ func (ws *WsConn) handleConnection(conn *websocket.Conn) {
 			continue
 		}
 
-		var metadata WsMetadata
+		var metadata *WsMetadata
 		if err = json.Unmarshal(message.Metadata, &metadata); err != nil {
-			ws.log.Warn("topic field is missing")
+			ws.log.Warn("metadata cannot be decoded")
 			continue
 		}
 
 		handler, found := ws.topics[metadata.Topic]
 		if !found {
 			ws.log.Error("topic field is missing", "topic", metadata.Topic)
-			return
+			continue
 		}
 
 		handler.Handler(connID, msg)
 	}
 }
 
-func NewWsConn() *WsConn {
-	lg := logger.New(logger.LevelDebug, logger.FormatString)
+func NewWsConn(log *logger.Logger) *WsConn {
 	wsConn := &WsConn{
-		log:               lg,
+		log:               log,
 		topics:            make(map[string]Topic),
 		connectionManager: NewWsConnectionManager(),
 	}

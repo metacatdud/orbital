@@ -1,8 +1,6 @@
 package orbital
 
 import (
-	"encoding/json"
-	"orbital/orbital"
 	"orbital/pkg/cryptographer"
 	"orbital/pkg/proto"
 	"orbital/web/wasm/domain"
@@ -15,17 +13,36 @@ import (
 type Auth struct {
 	di     *deps.Dependency
 	events *events.Event
+	ws     *transport.WsConn
+}
+
+func NewAuth(di *deps.Dependency) *Auth {
+	auth := &Auth{
+		di:     di,
+		events: di.Events(),
+		ws:     di.Ws(),
+	}
+
+	auth.init()
+
+	return auth
 }
 
 func (auth *Auth) init() {
+
+	// Event listeners
 	auth.events.On("evt:auth:login:request", auth.eventLogin)
+	auth.events.On("evt:auth:roleAccess:request", auth.eventRoleAccess)
+
+	// Ws listeners
+	auth.ws.On("orbital:authenticated", auth.wsAuthenticated)
 }
 
 func (auth *Auth) eventLogin(secretKey string) {
 
-	var loginErr *orbital.ErrorResponse
+	var loginErr *transport.ErrorResponse
 	if secretKey == "" {
-		loginErr = &orbital.ErrorResponse{
+		loginErr = &transport.ErrorResponse{
 			Type: "auth.empty",
 			Msg:  "private key cannot be empty",
 		}
@@ -36,7 +53,7 @@ func (auth *Auth) eventLogin(secretKey string) {
 
 	sk, err := cryptographer.NewPrivateKeyFromString(secretKey)
 	if err != nil {
-		loginErr = &orbital.ErrorResponse{
+		loginErr = &transport.ErrorResponse{
 			Type: "auth.unauthorized",
 			Msg:  "private key cannot be parsed",
 		}
@@ -44,101 +61,57 @@ func (auth *Auth) eventLogin(secretKey string) {
 		return
 	}
 
-	loginReq := &domain.LoginMessage{
+	body := &domain.LoginMessage{
 		PublicKey: sk.PublicKey().String(),
 	}
 
-	loginReqBin, err := loginReq.MarshalBinary()
+	meta := &transport.WsMetadata{
+		Topic: "orbital:authenticate",
+	}
+
+	req, err := proto.Encode(sk, meta, body)
 	if err != nil {
-		loginErr = &orbital.ErrorResponse{
-			Type: "auth.unknown",
-			Msg:  "cannot marshal login message",
-		}
-		auth.events.Emit("evt:auth:login:fail", loginErr)
-		return
-	}
-
-	req := &proto.Message{
-		PublicKey: sk.PublicKey().Compress(),
-		V:         1,
-		Body:      loginReqBin,
-		Timestamp: proto.TimestampNow(),
-	}
-
-	if err = req.Sign(sk.Bytes()); err != nil {
-		loginErr = &orbital.ErrorResponse{
+		loginErr = &transport.ErrorResponse{
 			Type: "auth.unauthorized",
 			Msg:  "private key not valid ed25519 key",
 		}
-
-		auth.events.Emit("evt:auth:login:fail", loginErr)
-	}
-
-	reqBin, err := json.Marshal(req)
-	if err != nil {
-		loginErr = &orbital.ErrorResponse{
-			Type: "auth.unknown",
-			Msg:  "cannot marshal request message",
-		}
-		auth.events.Emit("evt:auth:login:fail", loginErr)
-	}
-
-	var async transport.Async
-	async.Async(func() {
-		client := transport.NewAPI("/rpc/AuthService/Auth")
-
-		var res []byte
-		res, err = client.Do(reqBin, nil)
-		if err != nil {
-			dom.ConsoleError("Error calling AuthService/Auth", err.Error())
-			return
-		}
-
-		dom.ConsoleLog("AuthService/Auth success")
-
-		loginRes := &domain.LoginResponse{}
-		if err = loginRes.UnmarshalBinary(res); err != nil {
-			dom.ConsoleLog("Error unmarshalling response", err.Error())
-			return
-		}
-
-		if loginRes.Error != nil {
-			loginErr = &orbital.ErrorResponse{
-				Type: loginRes.Error.Type,
-				Msg:  loginRes.Error.Msg,
-			}
-
-			auth.events.Emit("evt:auth:login:fail", loginErr)
-			return
-		}
-
-		userRepo := domain.NewRepository[*domain.User](auth.di.Storage(), domain.UserStorageKey)
-		if err = userRepo.Save(loginRes.User); err != nil {
-			dom.ConsoleLog("Error saving response", err.Error())
-			return
-		}
-
-		authRepo := domain.NewRepository[*domain.Auth](auth.di.Storage(), domain.AuthStorageKey)
-		err = authRepo.Save(&domain.Auth{
-			SecretKey: secretKey,
-		})
-		if err != nil {
-			dom.ConsoleLog("Error saving response", err.Error())
-			return
-		}
-
-		auth.events.Emit("evt:auth:login:success")
 		return
-	})
+	}
+
+	// If everything is OK we can save user private key right away
+	authRepo := domain.NewRepository[*domain.Auth](auth.di.Storage(), domain.AuthStorageKey)
+	if err = authRepo.Save(&domain.Auth{
+		SecretKey: secretKey,
+	}); err != nil {
+		dom.ConsoleLog("Error saving response", err.Error())
+		return
+	}
+
+	auth.ws.Send(*req)
 }
 
-func NewAuth(di *deps.Dependency) *Auth {
-	auth := &Auth{
-		di:     di,
-		events: di.Events(),
+func (auth *Auth) eventRoleAccess(role string) {
+	if role == "" {
+		role = "guest"
 	}
 
-	auth.init()
+}
 
-	return auth
+func (auth *Auth) wsAuthenticated(data []byte) {
+	loginRes := domain.LoginResponse{}
+	if err := loginRes.UnmarshalBinary(data); err != nil {
+		auth.events.Emit("evt:auth:login:fail", &transport.ErrorResponse{
+			Type: "auth.internal",
+			Msg:  err.Error(),
+		})
+		return
+	}
+
+	userRepo := domain.NewRepository[*domain.User](auth.di.Storage(), domain.UserStorageKey)
+	if err := userRepo.Save(loginRes.User); err != nil {
+		dom.ConsoleLog("Error saving response", err.Error())
+		return
+	}
+
+	auth.events.Emit("evt:auth:login:success")
 }

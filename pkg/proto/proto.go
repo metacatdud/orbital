@@ -14,7 +14,7 @@ type Topic struct {
 
 var TimestampNow = cryptographer.Now
 
-func Encode(sk cryptographer.PrivateKey, metadata, body any) (*Message, error) {
+func Encode(sk *cryptographer.PrivateKey, metadata, body any) (*Message, error) {
 	pubK := sk.PublicKey()
 	var (
 		m []byte

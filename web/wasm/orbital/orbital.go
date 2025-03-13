@@ -2,6 +2,7 @@ package orbital
 
 import (
 	"errors"
+	"orbital/pkg/cryptographer"
 	"orbital/web/wasm/components"
 	"orbital/web/wasm/domain"
 	"orbital/web/wasm/pkg/deps"
@@ -59,13 +60,13 @@ func (app *App) eventAppReady() {
 	if err := app.rootComp.Render(); err != nil {
 		dom.ConsoleError("[orbital] Cannot render root component", err.Error())
 	}
-	
+
 	if err := app.rootComp.Mount(&rootEl); err != nil {
 		dom.ConsoleError("[orbital] Cannot mount to rootEl", err.Error())
 		return
 	}
 
-	authRepo := domain.NewRepository[*domain.Auth](app.di.Storage(), domain.AuthStorageKey)
+	authRepo := domain.NewRepository[domain.Auth](app.di.Storage(), domain.AuthStorageKey)
 	auth, err := authRepo.Get()
 	if err != nil {
 		if errors.Is(err, domain.ErrKeyNotFound) {
@@ -73,11 +74,39 @@ func (app *App) eventAppReady() {
 		}
 	}
 
-	if auth != nil {
-		app.state.Set("state:orbital:authenticated", true)
+	if auth == nil {
+		app.state.Set("state:orbital:authenticated", false)
+		return
 	}
 
-	return
+	userRepo := domain.NewRepository[domain.User](app.di.Storage(), domain.UserStorageKey)
+	user, err := userRepo.Get()
+	if err != nil {
+		if errors.Is(err, domain.ErrKeyNotFound) {
+			app.state.Set("state:orbital:authenticated", false)
+		}
+	}
+
+	if user == nil {
+		app.state.Set("state:orbital:authenticated", false)
+		return
+	}
+
+	// Verify if stored key matches the user
+	privateKey, err := cryptographer.NewPrivateKeyFromString(auth.SecretKey)
+	if err != nil {
+		dom.ConsoleError("[orbital] Cannot parse private key", err.Error())
+		app.state.Set("state:orbital:authenticated", false)
+		return
+	}
+
+	if privateKey.PublicKey().String() != user.PublicKey {
+		dom.ConsoleError("[orbital] PrivateKey does not match public key")
+		app.state.Set("state:orbital:authenticated", false)
+		return
+	}
+
+	app.state.Set("state:orbital:authenticated", true)
 
 }
 

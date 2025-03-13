@@ -8,7 +8,9 @@ import (
 	"orbital/internal/auth"
 	"orbital/internal/machine"
 	"orbital/orbital"
+	"orbital/pkg/cryptographer"
 	"orbital/pkg/db"
+	"orbital/pkg/logger"
 	"orbital/pkg/prompt"
 	"path/filepath"
 )
@@ -66,26 +68,37 @@ func setupAPIServer(cfg *config.Config) (*orbital.Server, *orbital.WsConn, error
 		return nil, nil, err
 	}
 
-	// Dependencies
+	// Dependencies and repositories
+	nodsPk, err := cryptographer.NewPrivateKeyFromString(cfg.SecretKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	log := logger.New(logger.LevelDebug, logger.FormatString)
+
 	userRepo := domain.NewUserRepository(dbClient)
 
 	// Prepare server
-	apiSrv := orbital.NewServer()
-	wsSrv := orbital.NewWsConn()
+	apiSrv := orbital.NewServer(log)
+	wsSrv := orbital.NewWsConn(log)
 
 	// Prepare services
 	authService := auth.NewService(auth.Dependencies{
+		Log:      log,
+		NodePk:   nodsPk,
 		UserRepo: userRepo,
 		Ws:       wsSrv,
 	})
 
-	_ = machine.NewService(machine.Dependencies{
-		Ws: wsSrv,
+	machineService := machine.NewService(machine.Dependencies{
+		Log:    log,
+		NodePk: nodsPk,
+		Ws:     wsSrv,
 	})
 
-	// Register all services to apiServer
-	auth.RegisterHelloServiceServer(apiSrv, wsSrv, authService)
-	//machine.RegisterDashboardServiceServer(apiSrv, wsSrv, dashService)
+	// Register all services to server
+	auth.RegisterAuthServiceServer(apiSrv, wsSrv, authService)
+	machine.RegisterMachineServiceServer(apiSrv, wsSrv, machineService)
 
 	return apiSrv, wsSrv, nil
 }
