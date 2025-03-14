@@ -19,7 +19,6 @@ type TaskbarComponent struct {
 }
 
 var _ component.ContainerComponent = (*TaskbarComponent)(nil)
-var _ component.StateControl = (*TaskbarComponent)(nil)
 
 func NewTaskbarComponent(di *deps.Dependency) *TaskbarComponent {
 	comp := &TaskbarComponent{
@@ -51,6 +50,7 @@ func (comp *TaskbarComponent) Mount(container *js.Value) error {
 	}
 
 	dom.AppendChild(*container, comp.element)
+	comp.bindUIEvents()
 
 	return nil
 }
@@ -61,7 +61,7 @@ func (comp *TaskbarComponent) Unmount() error {
 		comp.element = js.Null()
 	}
 
-	comp.UnbindStateWatch()
+	comp.unbindUIEvents()
 
 	return nil
 }
@@ -78,7 +78,9 @@ func (comp *TaskbarComponent) Render() error {
 	}
 
 	comp.element = dom.CreateElementFromString(buf.String())
+
 	comp.SetContainers()
+	comp.renderChildComponents()
 
 	return nil
 }
@@ -109,47 +111,37 @@ func (comp *TaskbarComponent) SetContainers() {
 	}
 }
 
-func (comp *TaskbarComponent) BindStateWatch() {
-	comp.state.Set("state:taskbar:currentMode", "")
+func (comp *TaskbarComponent) init() {}
 
-	var unwatchFn func()
-
-	unwatchFn = comp.state.Watch("state:taskbar:currentMode", comp.stateTaskbarCurrentMode)
-
-	comp.unwatchState = append(comp.unwatchState, unwatchFn)
+func (comp *TaskbarComponent) renderChildComponents() {
+	comp.renderStartMenu()
+	comp.renderActiveApps()
+	comp.renderSystemTray()
 }
 
-func (comp *TaskbarComponent) UnbindStateWatch() {
-	for _, unwatchFn := range comp.unwatchState {
-		unwatchFn()
+func (comp *TaskbarComponent) renderStartMenu() {
+	container := comp.GetContainer("startMenu")
+	if container.IsNull() {
+		dom.ConsoleError("overlay component container is null", "login")
+		return
 	}
+	dom.SetInnerHTML(container, "")
+
+	startMenu := NewTaskbarStartComponent(comp.di)
+	_ = startMenu.Render()
+	_ = startMenu.Mount(&container)
 }
 
-func (comp *TaskbarComponent) init() {
-	comp.BindStateWatch()
-}
-
-func (comp *TaskbarComponent) stateTaskbarCurrentMode(oldLevel, newLevel interface{}) {
-	newLvl := newLevel.(string)
-
-	switch newLvl {
-	case "guest":
-		dom.ConsoleLog("Set taskbar in guest mode")
-
-		container := comp.GetContainer("startMenu")
-		if container.IsNull() {
-			dom.ConsoleError("overlay component container is null", "login")
-			return
-		}
-		dom.SetInnerHTML(container, "")
-
-		startMenu := NewTaskbarStartComponent(comp.di)
-		_ = startMenu.Render()
-		_ = startMenu.Mount(&container)
-
-	case "user":
-		dom.ConsoleLog("Set taskbar in user mode")
-	case "admin":
-		dom.ConsoleLog("Set taskbar in admin mode")
+func (comp *TaskbarComponent) renderActiveApps() {
+	container := comp.GetContainer("activeApps")
+	if container.IsNull() {
+		dom.ConsoleError("overlay component container is null", "login")
+		return
 	}
+	dom.SetInnerHTML(container, "")
+	activeApps := NewTaskbarActiveAppsComponent(comp.di)
+	_ = activeApps.Render()
+	_ = activeApps.Mount(&container)
 }
+
+func (comp *TaskbarComponent) renderSystemTray() {}

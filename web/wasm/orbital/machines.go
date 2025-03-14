@@ -14,6 +14,18 @@ type Machine struct {
 	ws     *transport.WsConn
 }
 
+func NewMachine(di *deps.Dependency) *Machine {
+	machine := &Machine{
+		di:     di,
+		events: di.Events(),
+		ws:     di.Ws(),
+	}
+
+	machine.init()
+
+	return machine
+}
+
 func (machine *Machine) init() {
 	machine.ws.On("ws:orbital:machine", machine.wsMachines)
 }
@@ -32,16 +44,4 @@ func (machine *Machine) wsMachines(data []byte) {
 	}
 
 	machine.events.Emit("evt:machines:update", machineRes)
-}
-
-func NewMachine(di *deps.Dependency) *Machine {
-	machine := &Machine{
-		di:     di,
-		events: di.Events(),
-		ws:     di.Ws(),
-	}
-
-	machine.init()
-
-	return machine
 }

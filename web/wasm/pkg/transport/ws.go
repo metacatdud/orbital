@@ -14,7 +14,7 @@ type (
 	WsMetadata struct {
 		Topic string `json:"topic"`
 	}
-	
+
 	HandlerFunc func(data []byte)
 )
 
@@ -37,13 +37,13 @@ func (ws *WsConn) IsOpen() bool {
 
 func (ws *WsConn) Send(msg proto.Message) {
 	if !ws.isOpen {
-		dom.ConsoleLog("WebSocket closed")
+		dom.ConsoleWarn("WebSocket closed")
 		return
 	}
 
 	raw, err := json.Marshal(msg)
 	if err != nil {
-		dom.ConsoleLog(err.Error())
+		dom.ConsoleError(err.Error())
 		return
 	}
 
@@ -147,7 +147,7 @@ func (ws *WsConn) routeMessage(raw []byte) {
 
 	var msg *proto.Message
 	if err := json.Unmarshal(raw, &msg); err != nil {
-		dom.ConsoleLog("[routeMessage] not valid JSON, fallback to raw textData")
+		dom.ConsoleLog("[routeMessage] not valid JSON")
 		return
 	}
 
@@ -164,7 +164,7 @@ func (ws *WsConn) routeMessage(raw []byte) {
 
 	var metadata WsMetadata
 	if err = json.Unmarshal(msg.Metadata, &metadata); err != nil {
-		dom.ConsoleLog("[routeMessage] not valid msg.Metadata format, fallback to raw textData")
+		dom.ConsoleLog("[routeMessage] not valid msg.Metadata format")
 		return
 	}
 

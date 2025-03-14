@@ -69,8 +69,6 @@ func (comp *LoginComponent) Unmount() error {
 }
 
 func (comp *LoginComponent) Render() error {
-	dom.ConsoleLog("- Rendering", comp.ID())
-
 	tpl, err := comp.di.TplRegistry().Get(comp.Namespace())
 	if err != nil {
 		return err

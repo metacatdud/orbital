@@ -49,7 +49,7 @@ func (app *App) init() {
 
 func (app *App) eventAppReady() {
 	dom.ConsoleLog("[orbital] Ready")
-
+	
 	rootEl := dom.QuerySelector("#rootEl")
 	if rootEl.IsNull() {
 		dom.ConsoleError("Element rootEl doesn't exist")
@@ -59,6 +59,7 @@ func (app *App) eventAppReady() {
 	app.rootComp = components.NewOrbitalComponent(app.di)
 	if err := app.rootComp.Render(); err != nil {
 		dom.ConsoleError("[orbital] Cannot render root component", err.Error())
+		return
 	}
 
 	if err := app.rootComp.Mount(&rootEl); err != nil {
@@ -69,8 +70,9 @@ func (app *App) eventAppReady() {
 	authRepo := domain.NewRepository[domain.Auth](app.di.Storage(), domain.AuthStorageKey)
 	auth, err := authRepo.Get()
 	if err != nil {
-		if errors.Is(err, domain.ErrKeyNotFound) {
-			app.state.Set("state:orbital:authenticated", false)
+		if !errors.Is(err, domain.ErrKeyNotFound) {
+			dom.ConsoleError("[orbital] Cannot read storage", err.Error())
+			return
 		}
 	}
 
@@ -82,8 +84,9 @@ func (app *App) eventAppReady() {
 	userRepo := domain.NewRepository[domain.User](app.di.Storage(), domain.UserStorageKey)
 	user, err := userRepo.Get()
 	if err != nil {
-		if errors.Is(err, domain.ErrKeyNotFound) {
-			app.state.Set("state:orbital:authenticated", false)
+		if !errors.Is(err, domain.ErrKeyNotFound) {
+			dom.ConsoleError("[orbital] Cannot read storage", err.Error())
+			return
 		}
 	}
 

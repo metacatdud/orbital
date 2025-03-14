@@ -5,7 +5,6 @@ import (
 	"orbital/pkg/proto"
 	"orbital/web/wasm/domain"
 	"orbital/web/wasm/pkg/deps"
-	"orbital/web/wasm/pkg/dom"
 	"orbital/web/wasm/pkg/events"
 	"orbital/web/wasm/pkg/transport"
 )
@@ -83,7 +82,6 @@ func (auth *Auth) eventLogin(secretKey string) {
 	if err = authRepo.Save(&domain.Auth{
 		SecretKey: secretKey,
 	}); err != nil {
-		dom.ConsoleLog("Error saving response", err.Error())
 		return
 	}
 
@@ -109,7 +107,6 @@ func (auth *Auth) wsAuthenticated(data []byte) {
 
 	userRepo := domain.NewRepository[*domain.User](auth.di.Storage(), domain.UserStorageKey)
 	if err := userRepo.Save(loginRes.User); err != nil {
-		dom.ConsoleLog("Error saving response", err.Error())
 		return
 	}
 

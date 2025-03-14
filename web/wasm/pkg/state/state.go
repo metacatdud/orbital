@@ -58,7 +58,7 @@ func (s *State) Set(key string, value interface{}) {
 
 	// Reject pointer values.
 	if newType.Kind() == reflect.Ptr {
-		dom.ConsoleLog("pointer types are not supported for key", key, " Received pointer", newType)
+		dom.ConsoleError("pointer types are not supported for key", key, " Received pointer", newType)
 		s.mu.Unlock()
 		return
 	}

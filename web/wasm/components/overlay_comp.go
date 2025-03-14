@@ -107,7 +107,9 @@ func (comp *OverlayComponent) BindStateWatch() {
 	var unwatchFn func()
 
 	unwatchFn = comp.state.Watch("state:overlay:activeComponent", comp.stateOverlayActiveComponent)
+	comp.unwatchState = append(comp.unwatchState, unwatchFn)
 
+	unwatchFn = comp.state.Watch("state:orbital:authenticated", func(oldValue, newValue interface{}) {})
 	comp.unwatchState = append(comp.unwatchState, unwatchFn)
 }
 
@@ -150,8 +152,6 @@ func (comp *OverlayComponent) init() {
 func (comp *OverlayComponent) stateOverlayActiveComponent(oldActiveComp, newActiveComp interface{}) {
 	newComp := newActiveComp.(string)
 	oldComp := oldActiveComp.(string)
-
-	dom.ConsoleLog("[OverlayComponent] state", oldComp, newComp)
 
 	if newComp == oldComp {
 		return

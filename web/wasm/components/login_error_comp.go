@@ -9,13 +9,6 @@ import (
 	"syscall/js"
 )
 
-// Error manager component is a special component which can be used
-// in a variety of ways:
-// - Attach an error in a specific placeholder
-// - Attach in a specific field such as `data-error-for="email"`
-//
-// This error must be used as subcomponent for other components
-
 type ErrorManagerFields struct {
 	Type    string
 	Message string

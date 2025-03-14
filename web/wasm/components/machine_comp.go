@@ -44,7 +44,6 @@ func (comp *MachineComponent) Namespace() string {
 }
 
 func (comp *MachineComponent) Mount(container *js.Value) error {
-	dom.ConsoleLog("- Mounting", comp.ID())
 
 	if !container.Truthy() {
 		return errors.New("container does not exist")

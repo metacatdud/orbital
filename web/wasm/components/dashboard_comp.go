@@ -42,8 +42,6 @@ func (comp *DashboardComponent) Namespace() string {
 }
 
 func (comp *DashboardComponent) Mount(container *js.Value) error {
-	dom.ConsoleLog("- Mounting", comp.ID())
-
 	if !container.Truthy() {
 		return errors.New("container does not exist")
 	}
@@ -118,8 +116,6 @@ func (comp *DashboardComponent) unbindUIEvents() {
 }
 
 func (comp *DashboardComponent) eventMachine(machine *domain.Machine) {
-	dom.ConsoleLog("Event machines", machine)
-
 	//TODO: Parse data and show the template
 	dashboardContainer := dom.QuerySelector(`[data-dock="dashboardContainer"]`)
 	dashboardContainer.Set("innerHTML", "")
@@ -128,7 +124,8 @@ func (comp *DashboardComponent) eventMachine(machine *domain.Machine) {
 	// TODO: Parse data and set fields here
 
 	if err := machineComp.Render(); err != nil {
-		dom.ConsoleLog("Machine comp render error", err.Error())
+		dom.ConsoleError("Machine comp render error", err.Error())
+		return
 	}
 
 	if err := machineComp.Mount(&dashboardContainer); err != nil {
