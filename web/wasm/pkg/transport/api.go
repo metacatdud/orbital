@@ -81,8 +81,3 @@ func (api *API) mergeHeaders(r *http.Request, extraHeaders map[string]string) {
 		r.Header.Set(key, value)
 	}
 }
-
-type ErrorResponse struct {
-	Type string `json:"type"`
-	Msg  string `json:"msg"`
-}

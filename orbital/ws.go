@@ -22,19 +22,19 @@ type (
 	WsMetadata struct {
 		Topic string `json:"topic"`
 	}
+
+	WsService interface {
+		Register(topic Topic)
+		Broadcast(m proto.Message)
+		SendTo(connectionID string, m proto.Message) error
+	}
+
+	WsConn struct {
+		log               *logger.Logger
+		topics            map[string]Topic
+		connectionManager *WsConnectionManager
+	}
 )
-
-type WsService interface {
-	Register(topic Topic)
-	Broadcast(m proto.Message)
-	SendTo(connectionID string, m proto.Message) error
-}
-
-type WsConn struct {
-	log               *logger.Logger
-	topics            map[string]Topic
-	connectionManager *WsConnectionManager
-}
 
 func (ws *WsConn) Register(topic Topic) {
 	ws.log.Info("Register topic", "topic", topic.Name)
@@ -123,26 +123,25 @@ func (ws *WsConn) handleConnection(conn *websocket.Conn) {
 			continue
 		}
 
-		var metadata WsMetadata
+		var metadata *WsMetadata
 		if err = json.Unmarshal(message.Metadata, &metadata); err != nil {
-			ws.log.Warn("topic field is missing")
+			ws.log.Warn("metadata cannot be decoded")
 			continue
 		}
 
 		handler, found := ws.topics[metadata.Topic]
 		if !found {
 			ws.log.Error("topic field is missing", "topic", metadata.Topic)
-			return
+			continue
 		}
 
 		handler.Handler(connID, msg)
 	}
 }
 
-func NewWsConn() *WsConn {
-	lg := logger.New(logger.LevelDebug, logger.FormatString)
+func NewWsConn(log *logger.Logger) *WsConn {
 	wsConn := &WsConn{
-		log:               lg,
+		log:               log,
 		topics:            make(map[string]Topic),
 		connectionManager: NewWsConnectionManager(),
 	}
