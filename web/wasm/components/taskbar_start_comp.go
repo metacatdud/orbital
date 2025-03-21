@@ -3,23 +3,24 @@ package components
 import (
 	"bytes"
 	"errors"
-	"orbital/web/wasm/pkg/component"
-	"orbital/web/wasm/pkg/deps"
+	"orbital/web/wasm/orbital"
 	"orbital/web/wasm/pkg/dom"
 	"orbital/web/wasm/pkg/state"
 	"syscall/js"
 )
 
 type TaskbarStartComponent struct {
-	di      *deps.Dependency
-	docks   map[string]js.Value
-	element js.Value
-	state   *state.State
+	di           *orbital.Dependency
+	docks        map[string]js.Value
+	element      js.Value
+	state        *state.State
+	unwatchState []func()
 }
 
-var _ component.ContainerComponent = (*TaskbarStartComponent)(nil)
+var _ orbital.ContainerComponent = (*TaskbarStartComponent)(nil)
+var _ orbital.StateControl = (*TaskbarStartComponent)(nil)
 
-func NewTaskbarStartComponent(di *deps.Dependency) *TaskbarStartComponent {
+func NewTaskbarStartComponent(di *orbital.Dependency) *TaskbarStartComponent {
 	comp := &TaskbarStartComponent{
 		di:    di,
 		docks: make(map[string]js.Value),
@@ -50,8 +51,6 @@ func (comp *TaskbarStartComponent) Mount(container *js.Value) error {
 
 	dom.AppendChild(*container, comp.element)
 
-	comp.bindUIEvents()
-
 	return nil
 }
 
@@ -60,8 +59,6 @@ func (comp *TaskbarStartComponent) Unmount() error {
 		dom.RemoveElement(comp.element)
 		comp.element = js.Null()
 	}
-
-	comp.unbindUIEvents()
 
 	return nil
 }
@@ -109,4 +106,34 @@ func (comp *TaskbarStartComponent) SetContainers() {
 	}
 }
 
-func (comp *TaskbarStartComponent) init() {}
+func (comp *TaskbarStartComponent) BindStateWatch() {
+	comp.state.Set("state:taskbar:currentMode", "")
+
+	var unwatchFn func()
+
+	unwatchFn = comp.state.Watch("state:taskbar:currentMode", comp.stateTaskbarCurrentMode)
+
+	comp.unwatchState = append(comp.unwatchState, unwatchFn)
+}
+
+func (comp *TaskbarStartComponent) UnbindStateWatch() {
+	for _, unwatchFn := range comp.unwatchState {
+		unwatchFn()
+	}
+}
+
+func (comp *TaskbarStartComponent) init() {
+	comp.BindStateWatch()
+}
+
+// stateTaskbarCurrentMode captures status change based on the role of current user
+func (comp *TaskbarStartComponent) stateTaskbarCurrentMode(oldLevel, newLevel interface{}) {
+	newLvl := newLevel.(string)
+
+	switch newLvl {
+	case "guest":
+		dom.ConsoleLog("Set taskbar in guest mode")
+	default:
+		dom.ConsoleLog("Set taskbar validate against BE")
+	}
+}

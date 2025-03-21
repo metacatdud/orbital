@@ -3,8 +3,7 @@ package components
 import (
 	"bytes"
 	"errors"
-	"orbital/web/wasm/pkg/component"
-	"orbital/web/wasm/pkg/deps"
+	"orbital/web/wasm/orbital"
 	"orbital/web/wasm/pkg/dom"
 	"orbital/web/wasm/pkg/state"
 	"syscall/js"
@@ -23,18 +22,19 @@ func (fields *OverlayComponentFields) ToMap() map[string]interface{} {
 }
 
 type OverlayComponent struct {
-	di           *deps.Dependency
+	di           *orbital.Dependency
 	docks        map[string]js.Value
 	element      js.Value
+	child        orbital.Component
 	fields       OverlayComponentFields
-	unwatchState []func()
 	state        *state.State
+	unwatchState []func()
 }
 
-var _ component.ContainerComponent = (*OverlayComponent)(nil)
-var _ component.StateControl = (*OverlayComponent)(nil)
+var _ orbital.ContainerComponent = (*OverlayComponent)(nil)
+var _ orbital.StateControl = (*OverlayComponent)(nil)
 
-func NewOverlayComponent(di *deps.Dependency) *OverlayComponent {
+func NewOverlayComponent(di *orbital.Dependency) *OverlayComponent {
 	comp := &OverlayComponent{
 		di:     di,
 		fields: OverlayComponentFields{},
@@ -43,6 +43,7 @@ func NewOverlayComponent(di *deps.Dependency) *OverlayComponent {
 	}
 
 	comp.init()
+
 	return comp
 }
 
@@ -101,13 +102,32 @@ func (comp *OverlayComponent) SetFields(fields OverlayComponentFields) {
 	comp.fields = fields
 }
 
+func (comp *OverlayComponent) Show(componentName string, params ...interface{}) error {
+	containerName := params[0].(string)
+	container := comp.GetContainer(containerName)
+	if comp.child != nil {
+		_ = comp.child.Unmount()
+		comp.child = nil
+	}
+
+	compChild, err := comp.di.Factory().Create(componentName, params...)
+	if err != nil {
+		return err
+	}
+
+	comp.child = compChild
+	return comp.child.Mount(&container)
+}
+
 func (comp *OverlayComponent) BindStateWatch() {
 	comp.state.Set("state:overlay:activeComponent", "")
 
 	var unwatchFn func()
 
 	unwatchFn = comp.state.Watch("state:overlay:activeComponent", comp.stateOverlayActiveComponent)
+	comp.unwatchState = append(comp.unwatchState, unwatchFn)
 
+	unwatchFn = comp.state.Watch("state:orbital:authenticated", func(oldValue, newValue interface{}) {})
 	comp.unwatchState = append(comp.unwatchState, unwatchFn)
 }
 
@@ -151,40 +171,45 @@ func (comp *OverlayComponent) stateOverlayActiveComponent(oldActiveComp, newActi
 	newComp := newActiveComp.(string)
 	oldComp := oldActiveComp.(string)
 
-	dom.ConsoleLog("[OverlayComponent] state", oldComp, newComp)
+	dom.ConsoleLog("Active Comp", newComp, oldComp)
 
-	if newComp == oldComp {
+	if err := comp.Show(newComp, "overlayData"); err != nil {
+		dom.ConsoleError("", err.Error())
 		return
 	}
 
-	switch newActiveComp {
-	case "login":
-
-		comp.SetFields(OverlayComponentFields{
-			Title: "Login",
-			Icon:  "fa-lock",
-		})
-
-		container := comp.GetContainer("overlayData")
-		if container.IsNull() {
-			dom.ConsoleError("overlay component container is null", "login")
-			return
-		}
-		dom.SetInnerHTML(container, "")
-
-		loginComp := NewLoginComponent(comp.di)
-		if err := loginComp.Render(); err != nil {
-			dom.ConsoleError("overlay component login render error", err.Error())
-			return
-		}
-
-		if err := loginComp.Mount(&container); err != nil {
-			dom.ConsoleError("overlay component login mounting error", err.Error())
-			return
-		}
-
-		dom.RemoveClass(comp.element, "hide")
-	case "register":
-		dom.ConsoleLog("Register not implemented")
-	}
+	//if newComp == oldComp {
+	//	return
+	//}
+	//
+	//switch newActiveComp {
+	//case "login":
+	//
+	//	comp.SetFields(OverlayComponentFields{
+	//		Title: "Login",
+	//		Icon:  "fa-lock",
+	//	})
+	//
+	//	container := comp.GetContainer("overlayData")
+	//	if container.IsNull() {
+	//		dom.ConsoleError("overlay component container is null", "login")
+	//		return
+	//	}
+	//	dom.SetInnerHTML(container, "")
+	//
+	//	loginComp := NewLoginComponent(comp.di)
+	//	if err := loginComp.Render(); err != nil {
+	//		dom.ConsoleError("overlay component login render error", err.Error())
+	//		return
+	//	}
+	//
+	//	if err := loginComp.Mount(&container); err != nil {
+	//		dom.ConsoleError("overlay component login mounting error", err.Error())
+	//		return
+	//	}
+	//
+	//	dom.RemoveClass(comp.element, "hide")
+	//case "register":
+	//	dom.ConsoleLog("Register not implemented")
+	//}
 }

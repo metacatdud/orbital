@@ -1,14 +1,10 @@
 package main
 
 import (
+	"orbital/web/wasm/components"
+	"orbital/web/wasm/domain"
 	"orbital/web/wasm/orbital"
-	"orbital/web/wasm/pkg/deps"
 	"orbital/web/wasm/pkg/dom"
-	"orbital/web/wasm/pkg/events"
-	"orbital/web/wasm/pkg/state"
-	"orbital/web/wasm/pkg/storage"
-	"orbital/web/wasm/pkg/transport"
-	"orbital/web/wasm/templates"
 	"syscall/js"
 )
 
@@ -19,39 +15,24 @@ func main() {
 	select {}
 }
 
-type User struct {
-	Name string
-	Age  int
-}
-
 // bootstrapApp load the entrypoint
 func bootstrapApp(_ js.Value, _ []js.Value) interface{} {
 
-	tplReg, err := templates.NewRegistry()
+	// Dependencies
+	di, err := buildDependencies()
 	if err != nil {
-		dom.ConsoleError("Cannot create template registry", err.Error())
+		dom.ConsoleError("Dependency build error", err.Error())
 		return nil
 	}
 
-	di, err := deps.NewDependency(deps.Packages{
-		Events:      events.New(),
-		State:       state.New(),
-		Storage:     storage.NewLocalStorage(),
-		TplRegistry: tplReg,
-		Ws:          transport.NewWsConn(true),
-	})
-
-	if err != nil {
-		dom.ConsoleError("Cannot create dependencies registry", err.Error())
-		return nil
-	}
+	_ = setupFactory(di)
 
 	// Services
-	_ = orbital.NewAuth(di)
-	_ = orbital.NewMachine(di)
+	_ = domain.NewAuthService(di)
+	_ = domain.NewMachineService(di)
 
 	// Boot Orbital
-	app, err := orbital.NewApp(di)
+	app, err := orbital.NewOrbital(di)
 	if err != nil {
 		dom.ConsoleError("Cannot create orbital app", err.Error())
 		return nil
@@ -60,4 +41,21 @@ func bootstrapApp(_ js.Value, _ []js.Value) interface{} {
 	app.Boot()
 
 	return nil
+}
+
+// setupFactory returns a factory for components with dynamic location
+func setupFactory(di *orbital.Dependency) *orbital.Factory {
+
+	// Use proper factory instance
+	factory := di.Factory()
+
+	factory.Register("loginComp", func(di *orbital.Dependency, params ...interface{}) orbital.Component {
+		return components.NewLoginComponent(di)
+	})
+
+	return factory
+}
+
+func buildDependencies() (*orbital.Dependency, error) {
+	return orbital.NewDependencyWithDefaults()
 }

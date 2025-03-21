@@ -5,17 +5,37 @@ import (
 	"orbital/orbital"
 	"orbital/pkg/cryptographer"
 	"orbital/pkg/jobber"
+	"orbital/pkg/logger"
 	"orbital/pkg/proto"
 	"time"
 )
 
 type Dependencies struct {
-	Ws *orbital.WsConn
+	Log    *logger.Logger
+	NodePk *cryptographer.PrivateKey
+	Ws     *orbital.WsConn
 }
 
 type Machine struct {
-	jr *jobber.Runner
-	ws *orbital.WsConn
+	jr     *jobber.Runner
+	log    *logger.Logger
+	nodePk *cryptographer.PrivateKey
+	ws     *orbital.WsConn
+}
+
+func NewService(deps Dependencies) *Machine {
+	m := &Machine{
+		jr:     jobber.New(5),
+		log:    deps.Log,
+		nodePk: deps.NodePk,
+		ws:     deps.Ws,
+	}
+
+	m.jr.AddJob(10*time.Second, jobber.MaxRunInfinte, func() {
+		_ = m.JobAllData(context.Background(), AllDataReq{})
+	})
+
+	return m
 }
 
 func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
@@ -36,7 +56,7 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 			Msg:  err.Error(),
 		}
 
-		msg, _ := proto.Encode(*sk, meta, body)
+		msg, _ := proto.Encode(sk, meta, body)
 		service.ws.Broadcast(*msg)
 	}
 
@@ -48,7 +68,7 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 			Msg:  err.Error(),
 		}
 
-		msg, _ := proto.Encode(*sk, meta, body)
+		msg, _ := proto.Encode(sk, meta, body)
 		service.ws.Broadcast(*msg)
 	}
 
@@ -59,7 +79,7 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 			Type: "machine.stats.err",
 			Msg:  err.Error(),
 		}
-		msg, _ := proto.Encode(*sk, meta, body)
+		msg, _ := proto.Encode(sk, meta, body)
 		service.ws.Broadcast(*msg)
 	}
 
@@ -71,7 +91,7 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 			Msg:  err.Error(),
 		}
 
-		msg, _ := proto.Encode(*sk, meta, body)
+		msg, _ := proto.Encode(sk, meta, body)
 		service.ws.Broadcast(*msg)
 	}
 
@@ -82,7 +102,7 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 			Type: "machine.stats.err",
 			Msg:  err.Error(),
 		}
-		msg, _ := proto.Encode(*sk, meta, body)
+		msg, _ := proto.Encode(sk, meta, body)
 		service.ws.Broadcast(*msg)
 	}
 
@@ -97,21 +117,8 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 	body.Code = orbital.OK
 	body.SystemInfo = stats
 
-	msg, _ := proto.Encode(*sk, meta, body)
+	msg, _ := proto.Encode(sk, meta, body)
 	service.ws.Broadcast(*msg)
 
 	return nil
-}
-
-func NewService(deps Dependencies) *Machine {
-	m := &Machine{
-		jr: jobber.New(5),
-		ws: deps.Ws,
-	}
-
-	m.jr.AddJob(10*time.Second, jobber.MaxRunInfinte, func() {
-		_ = m.JobAllData(context.Background(), AllDataReq{})
-	})
-
-	return m
 }

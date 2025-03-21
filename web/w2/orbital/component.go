@@ -1,4 +1,4 @@
-package component
+package orbital
 
 import (
 	"syscall/js"
@@ -6,7 +6,7 @@ import (
 
 // Component interface for basic components
 type Component interface {
-	ID() string
+	Mod
 	Namespace() string
 	Mount(container *js.Value) error
 	Unmount() error
@@ -16,7 +16,7 @@ type Component interface {
 type ContainerComponent interface {
 	Component
 	GetContainer(name string) js.Value
-	SetContainers()
+	SetContainers(element js.Value)
 }
 
 // StateControl implementation for components with state manager

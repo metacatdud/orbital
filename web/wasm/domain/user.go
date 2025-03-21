@@ -2,12 +2,17 @@ package domain
 
 import (
 	"encoding/json"
-	"orbital/orbital"
+	"orbital/web/wasm/pkg/transport"
 )
 
 const (
 	UserStorageKey = "user"
+	AuthStorageKey = "auth"
 )
+
+type Auth struct {
+	SecretKey string `json:"secretKey"`
+}
 
 type User struct {
 	ID        string `json:"id"`
@@ -20,20 +25,10 @@ type LoginMessage struct {
 	PublicKey string `json:"publicKey"`
 }
 
-func (msg *LoginMessage) MarshalBinary() ([]byte, error) {
-	return json.Marshal(msg)
-}
-
-type LoginMetadata struct {
-}
-
-func (msg *LoginMetadata) MarshalBinary() ([]byte, error) {
-	return json.Marshal(msg)
-}
-
 type LoginResponse struct {
-	User  *User                  `json:"user"`
-	Error *orbital.ErrorResponse `json:"error,omitempty"`
+	Code  int                      `json:"code"`
+	User  *User                    `json:"user"`
+	Error *transport.ErrorResponse `json:"error,omitempty"`
 }
 
 func (msg *LoginResponse) UnmarshalBinary(data []byte) error {

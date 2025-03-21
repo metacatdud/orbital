@@ -1,4 +1,4 @@
-package deps
+package orbital
 
 import (
 	"orbital/web/wasm/pkg/events"
@@ -18,6 +18,7 @@ type Packages struct {
 
 type Dependency struct {
 	events      *events.Event
+	factory     *Factory
 	state       *state.State
 	storage     storage.Storage
 	tplRegistry *templates.Registry
@@ -44,27 +45,40 @@ func (dep *Dependency) Ws() *transport.WsConn {
 	return dep.ws
 }
 
+func (dep *Dependency) Factory() *Factory {
+	return dep.factory
+}
+
 func NewDependency(pkgs Packages) (*Dependency, error) {
-	return &Dependency{
-		events:      pkgs.Events,
+	d := &Dependency{
+		events: pkgs.Events,
+
 		state:       pkgs.State,
 		storage:     pkgs.Storage,
 		tplRegistry: pkgs.TplRegistry,
 		ws:          pkgs.Ws,
-	}, nil
+	}
+
+	d.factory = NewFactory(d)
+
+	return d, nil
 }
 
-func NewWithDefaults() (*Dependency, error) {
+func NewDependencyWithDefaults() (*Dependency, error) {
 	tplRegistry, err := templates.NewRegistry()
 	if err != nil {
 		return nil, err
 	}
 
-	return &Dependency{
+	d := &Dependency{
 		events:      events.New(),
 		state:       state.New(),
 		storage:     storage.NewLocalStorage(),
 		tplRegistry: tplRegistry,
 		ws:          transport.NewWsConn(true),
-	}, nil
+	}
+
+	d.factory = NewFactory(d)
+
+	return d, nil
 }

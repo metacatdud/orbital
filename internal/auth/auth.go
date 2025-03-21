@@ -2,96 +2,79 @@ package auth
 
 import (
 	"context"
-	"fmt"
 	"orbital/domain"
 	"orbital/orbital"
 	"orbital/pkg/cryptographer"
+	"orbital/pkg/logger"
 	"orbital/pkg/proto"
 )
 
 type Dependencies struct {
+	Log      *logger.Logger
+	NodePk   *cryptographer.PrivateKey
 	UserRepo domain.UserRepository
 	Ws       *orbital.WsConn
 }
 
 type Auth struct {
+	log      *logger.Logger
+	nodePk   *cryptographer.PrivateKey
 	userRepo domain.UserRepository
 	ws       *orbital.WsConn
 }
 
-func (service *Auth) Auth(ctx context.Context, req AuthReq) (AuthResp, error) {
+func NewService(deps Dependencies) *Auth {
+	return &Auth{
+		log:      deps.Log,
+		nodePk:   deps.NodePk,
+		userRepo: deps.UserRepo,
+		ws:       deps.Ws,
+	}
+}
 
-	user, err := service.userRepo.FindByPublicKey(req.PublicKey)
+func (service *Auth) Auth(ctx context.Context, connID string, req AuthReq) error {
+
+	userRepo, err := service.userRepo.FindByPublicKey(req.PublicKey)
+	meta := &orbital.WsMetadata{
+		Topic: "orbital:authenticated",
+	}
+
 	if err != nil {
-		return AuthResp{
+		body := &AuthResp{
 			Code: orbital.NotFound,
 			Error: &orbital.ErrorResponse{
 				Type: "auth.notfound",
 				Msg:  "unknown secret key",
 			},
-		}, nil
-	}
-
-	return AuthResp{
-		Code: orbital.OK,
-		User: &User{
-			ID:        user.ID,
-			Name:      user.Name,
-			PublicKey: req.PublicKey,
-			Access:    user.Access,
-		},
-	}, nil
-}
-
-func (service *Auth) WsAuth(ctx context.Context, connID string, req WsAuthReq) error {
-	fmt.Printf("Authorize WS sock connection for: %s\n", req.Authorize)
-
-	// DUMMY SERVER KEYS
-	_, sk, _ := cryptographer.GenerateKeysPair()
-
-	body := &WsAuthResp{}
-	user, err := service.userRepo.FindByPublicKey(req.Authorize)
-	if err != nil {
-
-		meta := &orbital.WsMetadata{
-			Topic: "orbital.authenticationFail",
 		}
 
-		body.Code = orbital.Unauthenticated
-		body.Error = &orbital.ErrorResponse{
-			Type: "auth.unauthenticated",
-			Msg:  "unknown secret key",
-		}
-
-		msg, _ := proto.Encode(*sk, meta, body)
+		msg, _ := proto.Encode(service.nodePk, meta, body)
 		if err = service.ws.SendTo(connID, *msg); err != nil {
+			service.log.Error("send message failed", "err", err.Error(), "connID", connID)
 			return nil
 		}
+
+		return nil
 	}
 
-	meta := &orbital.WsMetadata{
-		Topic: "orbital.authenticationSuccess",
+	user := &User{
+		ID:        userRepo.ID,
+		Name:      userRepo.Name,
+		PublicKey: userRepo.PubKey,
+		Access:    userRepo.Access,
 	}
 
-	resUser := &WsUser{
-		ConnectionID: connID,
-		PublicKey:    user.PubKey,
+	body := &AuthResp{
+		Code: orbital.OK,
+		User: user,
 	}
 
-	body.User = resUser
-	body.Code = orbital.OK
-
-	msg, _ := proto.Encode(*sk, meta, body)
+	msg, _ := proto.Encode(service.nodePk, meta, body)
 	if err = service.ws.SendTo(connID, *msg); err != nil {
+		service.log.Error("send message failed", "err", err.Error(), "connID", connID)
 		return nil
 	}
 
 	return nil
-}
 
-func NewService(deps Dependencies) *Auth {
-	return &Auth{
-		userRepo: deps.UserRepo,
-		ws:       deps.Ws,
-	}
 }

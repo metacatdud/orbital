@@ -3,18 +3,10 @@ package components
 import (
 	"bytes"
 	"errors"
-	"orbital/web/wasm/pkg/component"
-	"orbital/web/wasm/pkg/deps"
+	"orbital/web/wasm/orbital"
 	"orbital/web/wasm/pkg/dom"
 	"syscall/js"
 )
-
-// Error manager component is a special component which can be used
-// in a variety of ways:
-// - Attach an error in a specific placeholder
-// - Attach in a specific field such as `data-error-for="email"`
-//
-// This error must be used as subcomponent for other components
 
 type ErrorManagerFields struct {
 	Type    string
@@ -29,14 +21,14 @@ func (fields *ErrorManagerFields) ToMap() map[string]interface{} {
 }
 
 type ErrorManager struct {
-	di      *deps.Dependency
+	di      *orbital.Dependency
 	fields  ErrorManagerFields
 	element js.Value
 }
 
-var _ component.Component = (*ErrorManager)(nil)
+var _ orbital.Component = (*ErrorManager)(nil)
 
-func NewErrorManager(di *deps.Dependency) *ErrorManager {
+func NewErrorManager(di *orbital.Dependency) *ErrorManager {
 	comp := &ErrorManager{
 		di:     di,
 		fields: ErrorManagerFields{},

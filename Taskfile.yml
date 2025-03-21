@@ -70,6 +70,17 @@ tasks:
       - go build -ldflags="-s -w" -o orbital/web/orbital.wasm web/wasm/main.go
       - cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" orbital/web/wasm_exec.js
 
+  build:w2:
+    silent: true
+    env:
+      GOOS: js
+      GOARCH: wasm
+    cmds:
+      - echo "- Building w2 file"
+      - go build -ldflags="-s -w" -o orbital/web/orbital.wasm web/w2/main.go
+      - cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" orbital/web/wasm_exec.js
+
+
   build:css:
     silent: true
     vars:
@@ -80,7 +91,7 @@ tasks:
   wasm:
     cmds:
       - task: build:css
-      - task: build:wasm
+      - task: build:w2
 
   wasm:prod:
     silent: true

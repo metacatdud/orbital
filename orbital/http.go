@@ -58,10 +58,10 @@ func (s *Server) OnError(w http.ResponseWriter, r *http.Request, err error) {
 	s.onError(w, r, err)
 }
 
-func NewServer() *Server {
-	lg := logger.New(logger.LevelDebug, logger.FormatString)
+func NewServer(log *logger.Logger) *Server {
+	
 	return &Server{
-		log:      lg,
+		log:      log,
 		routes:   make(map[string]Route),
 		notFound: onNotFoundHandler,
 		onError:  onErrorHandler,
