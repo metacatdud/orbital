@@ -4,25 +4,23 @@ import (
 	"bytes"
 	"errors"
 	"orbital/orbital"
-	"orbital/web/wasm/domain"
-	"orbital/web/wasm/pkg/component"
-	"orbital/web/wasm/pkg/deps"
+	orbital2 "orbital/web/wasm/orbital"
 	"orbital/web/wasm/pkg/dom"
 	"orbital/web/wasm/pkg/events"
 	"syscall/js"
 )
 
 type DashboardComponent struct {
-	di               *deps.Dependency
+	di               *orbital2.Dependency
 	events           *events.Event
 	element          js.Value
 	unsubscribeEvent []func()
 }
 
-var _ component.Component = (*DashboardComponent)(nil)
-var _ component.EventControl = (*DashboardComponent)(nil)
+var _ orbital2.Component = (*DashboardComponent)(nil)
+var _ orbital2.EventControl = (*DashboardComponent)(nil)
 
-func NewDashboardComponent(di *deps.Dependency) *DashboardComponent {
+func NewDashboardComponent(di *orbital2.Dependency) *DashboardComponent {
 	comp := &DashboardComponent{
 		di:     di,
 		events: di.Events(),
@@ -42,8 +40,6 @@ func (comp *DashboardComponent) Namespace() string {
 }
 
 func (comp *DashboardComponent) Mount(container *js.Value) error {
-	dom.ConsoleLog("- Mounting", comp.ID())
-
 	if !container.Truthy() {
 		return errors.New("container does not exist")
 	}
@@ -112,14 +108,12 @@ func (comp *DashboardComponent) bindUIEvents() {
 }
 
 func (comp *DashboardComponent) unbindUIEvents() {
-	dom.RemoveEventListener(`[data-action='toggleProfile']`, "click", comp.uiEventLogout)
+	dom.RemoveEventListener(`[data-action='toggleProfile']`, "click", comp.uiEventToggleProfile)
 	dom.RemoveEventListener(`[data-action='logout']`, "click", comp.uiEventLogout)
-	dom.RemoveEventListener(`[data-id='avatarCloseOverlay']`, "click", comp.uiEventLogout)
+	dom.RemoveEventListener(`[data-id='avatarCloseOverlay']`, "click", comp.uiEventToggleProfileClose)
 }
 
-func (comp *DashboardComponent) eventMachine(machine *domain.Machine) {
-	dom.ConsoleLog("Event machines", machine)
-
+func (comp *DashboardComponent) eventMachine() {
 	//TODO: Parse data and show the template
 	dashboardContainer := dom.QuerySelector(`[data-dock="dashboardContainer"]`)
 	dashboardContainer.Set("innerHTML", "")
@@ -128,7 +122,8 @@ func (comp *DashboardComponent) eventMachine(machine *domain.Machine) {
 	// TODO: Parse data and set fields here
 
 	if err := machineComp.Render(); err != nil {
-		dom.ConsoleLog("Machine comp render error", err.Error())
+		dom.ConsoleError("Machine comp render error", err.Error())
+		return
 	}
 
 	if err := machineComp.Mount(&dashboardContainer); err != nil {
@@ -165,14 +160,7 @@ func (comp *DashboardComponent) uiEventToggleProfileClose(_ js.Value, _ []js.Val
 }
 
 func (comp *DashboardComponent) uiEventLogout(_ js.Value, _ []js.Value) interface{} {
-
-	userRepo := domain.NewRepository[*domain.User](comp.di.Storage(), domain.UserStorageKey)
-	_ = userRepo.Remove()
-
-	authRepo := domain.NewRepository[*domain.Auth](comp.di.Storage(), domain.AuthStorageKey)
-	_ = authRepo.Remove()
-
-	comp.di.State().Set("state:orbital:authenticated", false)
-	comp.Unmount()
+	comp.events.Emit("evt:auth:logout:request")
+	_ = comp.Unmount()
 	return nil
 }

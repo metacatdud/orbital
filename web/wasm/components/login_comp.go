@@ -3,24 +3,24 @@ package components
 import (
 	"bytes"
 	"errors"
-	"orbital/web/wasm/pkg/component"
-	"orbital/web/wasm/pkg/deps"
+	"orbital/web/wasm/orbital"
 	"orbital/web/wasm/pkg/dom"
+	"orbital/web/wasm/pkg/transport"
 	"syscall/js"
 )
 
 type LoginComponent struct {
-	di           *deps.Dependency
+	di           *orbital.Dependency
 	docks        map[string]js.Value
 	element      js.Value
 	unwatchState []func()
 }
 
-var _ component.ContainerComponent = (*LoginComponent)(nil)
-var _ component.EventControl = (*LoginComponent)(nil)
-var _ component.StateControl = (*LoginComponent)(nil)
+var _ orbital.ContainerComponent = (*LoginComponent)(nil)
+var _ orbital.EventControl = (*LoginComponent)(nil)
+var _ orbital.StateControl = (*LoginComponent)(nil)
 
-func NewLoginComponent(di *deps.Dependency) *LoginComponent {
+func NewLoginComponent(di *orbital.Dependency) *LoginComponent {
 	comp := &LoginComponent{
 		di:    di,
 		docks: make(map[string]js.Value),
@@ -69,8 +69,6 @@ func (comp *LoginComponent) Unmount() error {
 }
 
 func (comp *LoginComponent) Render() error {
-	dom.ConsoleLog("- Rendering", comp.ID())
-
 	tpl, err := comp.di.TplRegistry().Get(comp.Namespace())
 	if err != nil {
 		return err
@@ -97,6 +95,16 @@ func (comp *LoginComponent) UnbindStateWatch() {
 	for _, unwatchFn := range comp.unwatchState {
 		unwatchFn()
 	}
+}
+
+func (comp *LoginComponent) BindEvents() {
+	comp.di.Events().On("evt:auth:login:success", comp.eventLoginSuccess)
+	comp.di.Events().On("evt:auth:login:fail", comp.eventLoginFail)
+}
+
+func (comp *LoginComponent) UnbindEvents() {
+	comp.di.Events().Remove("evt:auth:login:success")
+	comp.di.Events().Remove("evt:auth:login:fail")
 }
 
 func (comp *LoginComponent) GetContainer(name string) js.Value {
@@ -128,6 +136,33 @@ func (comp *LoginComponent) SetContainers() {
 func (comp *LoginComponent) init() {
 	comp.BindEvents()
 	comp.BindStateWatch()
+}
+
+func (comp *LoginComponent) bindUIEvents() {
+	dom.AddEventListener(`[data-action="login"]`, "click", comp.uiEventHandleLogin)
+}
+
+func (comp *LoginComponent) unbindUIEvents() {
+	dom.RemoveEventListener(`[data-action="login"]`, "click", comp.uiEventHandleLogin)
+}
+
+func (comp *LoginComponent) eventLoginSuccess() {
+	comp.di.State().Set("state:orbital:authenticated", true)
+}
+
+func (comp *LoginComponent) eventLoginFail(errRes *transport.ErrorResponse) {
+	comp.di.State().Set("state:auth:errored", ErrorManagerFields{
+		Type:    errRes.Type,
+		Message: errRes.Msg,
+	})
+}
+
+func (comp *LoginComponent) uiEventHandleLogin(_ js.Value, _ []js.Value) interface{} {
+	skInput := dom.GetValue("#privateKey")
+
+	comp.di.Events().Emit("evt:auth:login:request", skInput)
+
+	return nil
 }
 
 func (comp *LoginComponent) stateErrored(_, newValue interface{}) {

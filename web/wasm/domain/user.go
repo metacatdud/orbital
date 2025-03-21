@@ -7,7 +7,12 @@ import (
 
 const (
 	UserStorageKey = "user"
+	AuthStorageKey = "auth"
 )
+
+type Auth struct {
+	SecretKey string `json:"secretKey"`
+}
 
 type User struct {
 	ID        string `json:"id"`

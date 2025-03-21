@@ -96,7 +96,7 @@ func setupAPIServer(cfg *config.Config) (*orbital.Server, *orbital.WsConn, error
 		Ws:     wsSrv,
 	})
 
-	// Register all services to server
+	// Register all service to server
 	auth.RegisterAuthServiceServer(apiSrv, wsSrv, authService)
 	machine.RegisterMachineServiceServer(apiSrv, wsSrv, machineService)
 

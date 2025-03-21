@@ -3,8 +3,7 @@ package components
 import (
 	"bytes"
 	"errors"
-	"orbital/web/wasm/pkg/component"
-	"orbital/web/wasm/pkg/deps"
+	"orbital/web/wasm/orbital"
 	"orbital/web/wasm/pkg/dom"
 	"orbital/web/wasm/pkg/state"
 	"syscall/js"
@@ -17,15 +16,15 @@ func (field *MachineComponentFields) ToMap() map[string]interface{} {
 }
 
 type MachineComponent struct {
-	di           *deps.Dependency
+	di           *orbital.Dependency
 	element      js.Value
 	fields       MachineComponentFields
 	unwatchState []func()
 }
 
-var _ component.Component = (*MachineComponent)(nil)
+var _ orbital.Component = (*MachineComponent)(nil)
 
-func NewMachineComponent(di *deps.Dependency) *MachineComponent {
+func NewMachineComponent(di *orbital.Dependency) *MachineComponent {
 	comp := &MachineComponent{
 		di:     di,
 		fields: MachineComponentFields{},
@@ -44,7 +43,6 @@ func (comp *MachineComponent) Namespace() string {
 }
 
 func (comp *MachineComponent) Mount(container *js.Value) error {
-	dom.ConsoleLog("- Mounting", comp.ID())
 
 	if !container.Truthy() {
 		return errors.New("container does not exist")

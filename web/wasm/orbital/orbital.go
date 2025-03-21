@@ -5,7 +5,6 @@ import (
 	"orbital/pkg/cryptographer"
 	"orbital/web/wasm/components"
 	"orbital/web/wasm/domain"
-	"orbital/web/wasm/pkg/deps"
 	"orbital/web/wasm/pkg/dom"
 	"orbital/web/wasm/pkg/events"
 	"orbital/web/wasm/pkg/state"
@@ -14,8 +13,8 @@ import (
 	"time"
 )
 
-type App struct {
-	di       *deps.Dependency
+type Orbital struct {
+	di       *Dependency
 	events   *events.Event
 	state    *state.State
 	rootComp *components.OrbitalComponent
@@ -23,7 +22,21 @@ type App struct {
 	ws       *transport.WsConn
 }
 
-func (app *App) Boot() {
+func NewOrbital(di *Dependency) (*Orbital, error) {
+	app := &Orbital{
+		di:      di,
+		events:  di.Events(),
+		state:   di.State(),
+		storage: di.Storage(),
+		ws:      di.Ws(),
+	}
+
+	app.init()
+
+	return app, nil
+}
+
+func (app *Orbital) Boot() {
 
 	retries := 3
 	interval := 1 * time.Second
@@ -43,11 +56,11 @@ func (app *App) Boot() {
 	}()
 }
 
-func (app *App) init() {
+func (app *Orbital) init() {
 	app.events.Once("evt:app:ready", app.eventAppReady)
 }
 
-func (app *App) eventAppReady() {
+func (app *Orbital) eventAppReady() {
 	dom.ConsoleLog("[orbital] Ready")
 
 	rootEl := dom.QuerySelector("#rootEl")
@@ -59,6 +72,7 @@ func (app *App) eventAppReady() {
 	app.rootComp = components.NewOrbitalComponent(app.di)
 	if err := app.rootComp.Render(); err != nil {
 		dom.ConsoleError("[orbital] Cannot render root component", err.Error())
+		return
 	}
 
 	if err := app.rootComp.Mount(&rootEl); err != nil {
@@ -69,8 +83,9 @@ func (app *App) eventAppReady() {
 	authRepo := domain.NewRepository[domain.Auth](app.di.Storage(), domain.AuthStorageKey)
 	auth, err := authRepo.Get()
 	if err != nil {
-		if errors.Is(err, domain.ErrKeyNotFound) {
-			app.state.Set("state:orbital:authenticated", false)
+		if !errors.Is(err, domain.ErrKeyNotFound) {
+			dom.ConsoleError("[orbital] Cannot read storage", err.Error())
+			return
 		}
 	}
 
@@ -82,8 +97,9 @@ func (app *App) eventAppReady() {
 	userRepo := domain.NewRepository[domain.User](app.di.Storage(), domain.UserStorageKey)
 	user, err := userRepo.Get()
 	if err != nil {
-		if errors.Is(err, domain.ErrKeyNotFound) {
-			app.state.Set("state:orbital:authenticated", false)
+		if !errors.Is(err, domain.ErrKeyNotFound) {
+			dom.ConsoleError("[orbital] Cannot read storage", err.Error())
+			return
 		}
 	}
 
@@ -96,31 +112,24 @@ func (app *App) eventAppReady() {
 	privateKey, err := cryptographer.NewPrivateKeyFromString(auth.SecretKey)
 	if err != nil {
 		dom.ConsoleError("[orbital] Cannot parse private key", err.Error())
+
+		_ = authRepo.Remove()
+		_ = userRepo.Remove()
+
 		app.state.Set("state:orbital:authenticated", false)
 		return
 	}
 
 	if privateKey.PublicKey().String() != user.PublicKey {
 		dom.ConsoleError("[orbital] PrivateKey does not match public key")
+
+		_ = authRepo.Remove()
+		_ = userRepo.Remove()
+
 		app.state.Set("state:orbital:authenticated", false)
 		return
 	}
 
 	app.state.Set("state:orbital:authenticated", true)
 
-}
-
-func NewApp(di *deps.Dependency) (*App, error) {
-
-	app := &App{
-		di:      di,
-		events:  di.Events(),
-		state:   di.State(),
-		storage: di.Storage(),
-		ws:      di.Ws(),
-	}
-
-	app.init()
-
-	return app, nil
 }
