@@ -8,32 +8,27 @@ import (
 
 type Message = cryptographer.Message
 
-type Topic struct {
-	Name string `json:"name"`
-}
-
 var TimestampNow = cryptographer.Now
 
-func Encode(sk *cryptographer.PrivateKey, metadata, body any) (*Message, error) {
+func Encode(sk *cryptographer.PrivateKey, metadata *cryptographer.Metadata, body any) (*Message, error) {
 	pubK := sk.PublicKey()
 	var (
-		m []byte
 		b []byte
 	)
 
-	if metadata != nil {
-		m, _ = json.Marshal(metadata)
-	}
-
 	if body != nil {
 		b, _ = json.Marshal(body)
+	}
+
+	if metadata == nil {
+		metadata = &cryptographer.Metadata{}
 	}
 
 	msg := &Message{
 		PublicKey: pubK.Compress(),
 		V:         1,
 		Timestamp: TimestampNow(),
-		Metadata:  m,
+		Metadata:  metadata,
 		Body:      b,
 	}
 
@@ -45,7 +40,7 @@ func Encode(sk *cryptographer.PrivateKey, metadata, body any) (*Message, error) 
 }
 
 // Decode validate message signature and decide the body
-func Decode(msg Message, body, metadata any) error {
+func Decode(msg Message, body interface{}) error {
 	valid, err := msg.Verify()
 	if err != nil {
 		return err
@@ -53,12 +48,6 @@ func Decode(msg Message, body, metadata any) error {
 
 	if !valid {
 		return errors.New("invalid message signature")
-	}
-
-	if metadata != nil {
-		if err = json.Unmarshal(msg.Body, &metadata); err != nil {
-			return err
-		}
 	}
 
 	if body != nil {
