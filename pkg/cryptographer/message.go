@@ -9,9 +9,6 @@ import (
 )
 
 const (
-	// Metadata cannot exceed 1MB
-	maxMetadata = 0x100000
-
 	// Payload cannot exceed 50MB
 	maxSize = 50267340
 )
@@ -31,7 +28,7 @@ type Message struct {
 	PublicKey [32]byte  `json:"publicKey"`
 	V         int64     `json:"v"`
 	Timestamp Timestamp `json:"timestamp"`
-	Metadata  []byte    `json:"metadata"`
+	Metadata  *Metadata `json:"metadata"`
 	Body      []byte    `json:"body"`
 	Signature [64]byte  `json:"sig"`
 }
@@ -71,16 +68,17 @@ func (m *Message) Serialize() ([]byte, error) {
 	}
 
 	// Serialize Metadata
-	if len(m.Metadata) > maxMetadata {
-		return nil, fmt.Errorf("%w:[%d]", ErrMetadataSizeExceed, len(m.Metadata))
+	metaBytes, err := m.Metadata.Serialize()
+	if err != nil {
+		return nil, fmt.Errorf("failed to serialize metadata: %w", err)
 	}
 
-	if err := writeTLVtoBuffer(&buf, TypeMetadata, m.Metadata); err != nil {
+	if err = writeTLVtoBuffer(&buf, TypeMetadata, metaBytes); err != nil {
 		return nil, err
 	}
 
 	// Serialize Body
-	if err := writeTLVtoBuffer(&buf, TypeBody, m.Body); err != nil {
+	if err = writeTLVtoBuffer(&buf, TypeBody, m.Body); err != nil {
 		return nil, err
 	}
 
