@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/coder/websocket"
 	"net/http"
+	"orbital/pkg/cryptographer"
 	"orbital/pkg/logger"
 	"orbital/pkg/proto"
 	"time"
@@ -18,11 +19,7 @@ type (
 		Name    string
 		Handler HandlerFunc
 	}
-
-	WsMetadata struct {
-		Topic string `json:"topic"`
-	}
-
+	
 	WsService interface {
 		Register(topic Topic)
 		Broadcast(m proto.Message)
@@ -123,15 +120,9 @@ func (ws *WsConn) handleConnection(conn *websocket.Conn) {
 			continue
 		}
 
-		var metadata *WsMetadata
-		if err = json.Unmarshal(message.Metadata, &metadata); err != nil {
-			ws.log.Warn("metadata cannot be decoded")
-			continue
-		}
-
-		handler, found := ws.topics[metadata.Topic]
+		handler, found := ws.topics[metadataToTopic(message.Metadata)]
 		if !found {
-			ws.log.Error("topic field is missing", "topic", metadata.Topic)
+			ws.log.Error("topic field is missing", "topic", metadataToTopic(message.Metadata))
 			continue
 		}
 
@@ -147,4 +138,12 @@ func NewWsConn(log *logger.Logger) *WsConn {
 	}
 
 	return wsConn
+}
+
+func metadataToTopic(m *cryptographer.Metadata) string {
+	topic := fmt.Sprintf("%s:%s", m.Domain, m.Action)
+	if m.CorrelationID != "" {
+		topic += ":" + m.CorrelationID
+	}
+	return topic
 }
