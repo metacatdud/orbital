@@ -60,7 +60,13 @@ func (c *Config) OrbitalRootDir() string {
 	return filepath.Join(c.Datapath, "orbital")
 }
 
-func LoadConfig(cfgPath string) (*Config, error) {
+func LoadConfig() (*Config, error) {
+	uConfD, err := os.UserConfigDir()
+	if err != nil {
+		return nil, fmt.Errorf("%w:[%s]", ErrConfigRead, err.Error())
+	}
+
+	cfgPath := filepath.Join(uConfD, "orbital/config.yaml")
 	cfgBytes, err := os.ReadFile(cfgPath)
 	if err != nil {
 		return nil, fmt.Errorf("%w:[%s]", ErrConfigRead, err.Error())
