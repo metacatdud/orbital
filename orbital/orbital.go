@@ -6,30 +6,30 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
+	"orbital/config"
 	"orbital/pkg/logger"
 	"strconv"
-	"strings"
 )
 
 //go:embed web/*
 var staticDir embed.FS
 
 type Config struct {
-	ApiServer       *Server
-	WsServer        *WsConn
-	Ip              string
-	Port            int
-	RootStoragePath string
+	ApiServer *Server
+	WsServer  *WsConn
+	Ip        string
+	Port      int
+	Cfg       *config.Config
 }
 
 type Orbital struct {
-	client      *http.Server
-	apiServer   *Server
-	wsServer    *WsConn
-	ip          string
-	port        int
-	rootStorage string
-	log         *logger.Logger
+	client    *http.Server
+	apiServer *Server
+	wsServer  *WsConn
+	ip        string
+	port      int
+	cfg       *config.Config
+	log       *logger.Logger
 }
 
 func (n *Orbital) Start() error {
@@ -63,9 +63,9 @@ func (n *Orbital) init() error {
 	mux.Handle("/rpc/", n.apiServer)
 	mux.Handle("/ws", n.wsServer)
 
-	handler := CORSMiddleware(mux)
+	handler := corsMiddleware(mux)
 
-	//tlsCfg, err := tlsConfig(n.rootStorage)
+	//tlsCfg, err := tlsConfig(n.cfg.Datapath)
 	//if err != nil {
 	//	return err
 	//}
@@ -83,12 +83,12 @@ func New(cfg Config) *Orbital {
 	lg := logger.New(logger.LevelDebug, logger.FormatString)
 
 	return &Orbital{
-		apiServer:   cfg.ApiServer,
-		wsServer:    cfg.WsServer,
-		ip:          cfg.Ip,
-		rootStorage: cfg.RootStoragePath,
-		log:         lg,
-		port:        cfg.Port,
+		apiServer: cfg.ApiServer,
+		wsServer:  cfg.WsServer,
+		ip:        cfg.Ip,
+		cfg:       cfg.Cfg,
+		log:       lg,
+		port:      cfg.Port,
 	}
 }
 
@@ -108,27 +108,4 @@ func tlsConfig(dataPath string) (*tls.Config, error) {
 	}
 
 	return tlsCfg, nil
-}
-
-func fsFileHandlerMiddleware(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		if strings.HasSuffix(r.URL.Path, ".wasm") {
-			w.Header().Set("Content-Type", "application/wasm")
-
-			// This WASM should be considered dev build
-			// and not cached
-			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-			w.Header().Set("Pragma", "no-cache")
-			w.Header().Set("Expires", "0")
-		}
-
-		if strings.HasSuffix(r.URL.Path, ".wasm.br") {
-			w.Header().Set("Content-Type", "application/wasm")
-			w.Header().Set("Content-Encoding", "br")
-
-		}
-
-		h.ServeHTTP(w, r)
-	})
 }

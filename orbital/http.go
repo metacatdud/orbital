@@ -11,6 +11,8 @@ import (
 	"strings"
 )
 
+type Middleware func(http.HandlerFunc) http.HandlerFunc
+
 type Route struct {
 	ServiceName string
 	ActionName  string
@@ -21,14 +23,38 @@ type Route struct {
 type HTTPService interface {
 	Register(route Route)
 	OnError(w http.ResponseWriter, r *http.Request, err error)
+	Use(mw ...Middleware)
 }
 
 type Server struct {
-	log      *logger.Logger
-	routes   map[string]Route
-	notFound http.HandlerFunc
-	onError  func(w http.ResponseWriter, r *http.Request, err error)
-	wsConn   *WsConn
+	log         *logger.Logger
+	routes      map[string]Route
+	notFound    http.HandlerFunc
+	onError     func(w http.ResponseWriter, r *http.Request, err error)
+	wsConn      *WsConn
+	middlewares []Middleware
+}
+
+func NewServer(log *logger.Logger) *Server {
+
+	srv := &Server{
+		log:         log,
+		routes:      make(map[string]Route),
+		notFound:    onNotFoundHandler,
+		onError:     onErrorHandler,
+		middlewares: []Middleware{},
+	}
+
+	srv.Use(
+		LoggerMiddleware(log),
+		PanicRecoverMiddleware(),
+	)
+
+	return srv
+}
+
+func (s *Server) Use(mw ...Middleware) {
+	s.middlewares = append(s.middlewares, mw...)
 }
 
 func (s *Server) Register(route Route) {
@@ -45,27 +71,22 @@ func (s *Server) Register(route Route) {
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Get Route
-	h, ok := s.routes[r.URL.Path]
+	route, ok := s.routes[r.URL.Path]
 	if !ok {
 		s.notFound.ServeHTTP(w, r)
 		return
 	}
 
-	h.Handler.ServeHTTP(w, r)
+	handler := route.Handler
+	for i := len(s.middlewares) - 1; i >= 0; i-- {
+		handler = s.middlewares[i](handler)
+	}
+
+	handler.ServeHTTP(w, r)
 }
 
 func (s *Server) OnError(w http.ResponseWriter, r *http.Request, err error) {
 	s.onError(w, r, err)
-}
-
-func NewServer(log *logger.Logger) *Server {
-	
-	return &Server{
-		log:      log,
-		routes:   make(map[string]Route),
-		notFound: onNotFoundHandler,
-		onError:  onErrorHandler,
-	}
 }
 
 // Decode incoming http request body
