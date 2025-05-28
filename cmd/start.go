@@ -28,7 +28,7 @@ func newStartCmd() *cobra.Command {
 
 			cmdHeader("start")
 
-			cfg, err := config.LoadConfig("/etc/orbital/config.yaml")
+			cfg, err := config.LoadConfig()
 			if err != nil {
 				return err
 			}
@@ -40,11 +40,11 @@ func newStartCmd() *cobra.Command {
 			}
 
 			orbitalCfg := orbital.Config{
-				ApiServer:       apiSrv,
-				WsServer:        wsSrv,
-				Ip:              fmt.Sprintf("[%s]", cfg.BindIP),
-				RootStoragePath: cfg.Datapath,
-				Port:            port,
+				ApiServer: apiSrv,
+				WsServer:  wsSrv,
+				Ip:        fmt.Sprintf("[%s]", cfg.BindIP),
+				Cfg:       cfg,
+				Port:      port,
 			}
 
 			orbitalNode := orbital.New(orbitalCfg)
@@ -96,7 +96,7 @@ func setupAPIServer(cfg *config.Config) (*orbital.Server, *orbital.WsConn, error
 		Ws:     wsSrv,
 	})
 
-	// Register all services to server
+	// Register all service to server
 	auth.RegisterAuthServiceServer(apiSrv, wsSrv, authService)
 	machine.RegisterMachineServiceServer(apiSrv, wsSrv, machineService)
 

@@ -37,6 +37,13 @@ func newInitCmd(deps Dependencies) *cobra.Command {
 
 			cmdHeader("init")
 
+			var err error
+
+			uConfD, err := os.UserConfigDir()
+			if err != nil {
+				return fmt.Errorf("cannot find user config dir: %w", err)
+			}
+
 			secretKey, _ := cmd.Flags().GetString("sk")
 			ip, _ := cmd.Flags().GetString("ip")
 			dataPath, _ := cmd.Flags().GetString("datapath")
@@ -49,8 +56,8 @@ func newInitCmd(deps Dependencies) *cobra.Command {
 			prompt.Bold(prompt.ColorGreen, "        OK")
 
 			isReinit := false
-			cfgPath := "/etc/orbital/config.yaml"
-			if _, err := os.Stat(cfgPath); !os.IsNotExist(err) {
+			cfgPath := filepath.Join(uConfD, "orbital/config.yaml")
+			if _, err = os.Stat(cfgPath); !os.IsNotExist(err) {
 				isReinit = true
 			}
 
@@ -61,13 +68,13 @@ func newInitCmd(deps Dependencies) *cobra.Command {
 			}
 
 			prompt.Bold(prompt.ColorYellow, prompt.NewLine("[ Validating private key ]"))
-			if err := validateEd25519SecretKey(secretKey); err != nil {
+			if err = validateEd25519SecretKey(secretKey); err != nil {
 				return err
 			}
 			prompt.Bold(prompt.ColorGreen, " OK")
 
 			prompt.Bold(prompt.ColorYellow, prompt.NewLine("[ Validating ip ]"))
-			if err := validateIp(ip); err != nil {
+			if err = validateIp(ip); err != nil {
 				return err
 			}
 			prompt.Bold(prompt.ColorGreen, "          OK")
@@ -75,7 +82,7 @@ func newInitCmd(deps Dependencies) *cobra.Command {
 			// Skip this step on forced to avoid data corruption or unexpected issues
 			prompt.Bold(prompt.ColorYellow, prompt.NewLine("[ Create data folders ]"))
 			if !isReinit {
-				if err := createDataDir(orbitalCfg); err != nil {
+				if err = createDataDir(orbitalCfg); err != nil {
 					return err
 				}
 				prompt.Bold(prompt.ColorGreen, "    OK")
@@ -91,7 +98,7 @@ func newInitCmd(deps Dependencies) *cobra.Command {
 				}
 
 				backupPath := filepath.Join(filepath.Dir(cfgPath), "config.yaml.old")
-				if err := os.Rename(cfgPath, backupPath); err != nil {
+				if err = os.Rename(cfgPath, backupPath); err != nil {
 					// Allow this error to pass to be caught on config file save
 					if !os.IsPermission(err) {
 						return err
@@ -100,7 +107,7 @@ func newInitCmd(deps Dependencies) *cobra.Command {
 			}
 
 			prompt.Bold(prompt.ColorYellow, prompt.NewLine("[ Creating config file ]"))
-			if err := orbitalCfg.Save(cfgPath); err != nil {
+			if err = orbitalCfg.Save(cfgPath); err != nil {
 				if errors.Is(err, config.ErrConfigWrite) {
 					prompt.Warn(prompt.NewLine("Cannot write the file. Use sudo privileges. The config wile will created at: /etc/orbital/config.yaml"))
 					prompt.Info(prompt.NewLine("If you are not comfortable running Orbital with sudo, create the file manually and copy the following contents between the BEGIN and END to it"))
@@ -124,7 +131,6 @@ func newInitCmd(deps Dependencies) *cobra.Command {
 			var (
 				caCert *x509.Certificate
 				caKey  *ecdsa.PrivateKey
-				err    error
 			)
 
 			prompt.Bold(prompt.ColorYellow, prompt.NewLine("[ Generate CA Certificate ]"))
@@ -156,18 +162,18 @@ func newInitCmd(deps Dependencies) *cobra.Command {
 			prompt.OK("Details |---------------------------- ")
 			fmt.Println()
 
-			prompt.Info(prompt.NewLine("--- BEGIN etc/orbital/config.yaml -------"))
+			prompt.Info(prompt.NewLine("--- BEGIN %s/orbital/config.yaml -------"), uConfD)
 
 			prompt.Err(prompt.NewLine("secretKey: %s"), secretKey)
 			prompt.Info(prompt.NewLine("bindIp: %s"), ip)
 			prompt.Info(prompt.NewLine("dataPath: %s"), dataPath)
 
-			prompt.Info(prompt.NewLine("--- END etc/orbital/config.yaml ----------"))
+			prompt.Info(prompt.NewLine("--- END %s/orbital/config.yaml ----------"), uConfD)
 
 			fmt.Println()
-			prompt.Info(prompt.NewLine("Config file location: /etc/orbital/config.yaml"))
+			prompt.Info(prompt.NewLine("Config file location: %s/orbital/config.yaml"), uConfD)
 			if forced {
-				prompt.Warn(prompt.NewLine("Old config backup:    /etc/orbital/config.yaml.old"))
+				prompt.Warn(prompt.NewLine("Old config backup:    %s/orbital/config.yaml.old"), uConfD)
 			}
 
 			prompt.Bold(prompt.ColorYellow, prompt.NewLine("[ Migrate database ]"))
@@ -183,7 +189,8 @@ func newInitCmd(deps Dependencies) *cobra.Command {
 			}
 			prompt.Bold(prompt.ColorGreen, "   OK")
 
-			prompt.Bold(prompt.ColorYellow, prompt.NewLine("[ Create first user ]"))
+			// TODO: Move this to a new custom command for creating root user
+			prompt.Bold(prompt.ColorYellow, prompt.NewLine("[ Create root user ]"))
 			sk, err := cryptographer.NewPrivateKeyFromString(orbitalCfg.SecretKey)
 			if err != nil {
 				return err
@@ -316,8 +323,5 @@ func updateDataDirFromResources(resDir fs.FS, orbitalCfg config.Config) error {
 		return nil
 	})
 
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
