@@ -1,4 +1,4 @@
-package auth
+package apps
 
 import (
 	"encoding/json"
@@ -10,48 +10,39 @@ import (
 	"orbital/pkg/proto"
 )
 
-type authServiceServer struct {
+type appsServiceServer struct {
 	server  orbital.HTTPService
-	service AuthService
+	service AppsService
 }
 
-func RegisterAuthServiceServer(server orbital.HTTPService, _ orbital.WsService, service AuthService) {
-	handler := &authServiceServer{
+func RegisterAppsServiceServer(server orbital.HTTPService, _ orbital.WsService, service AppsService) {
+	handler := &appsServiceServer{
 		server:  server,
 		service: service,
 	}
 
-	// Register middleware if any.
-	// [!] These will be attached to all routes
-	server.Use(
-		MessageDecode(),
-		ValidateRole(),
-	)
-
-	// Register routes
 	server.Register(orbital.Route{
-		ServiceName: "AuthService",
-		ActionName:  "Auth",
-		Handler:     handler.handleAuthentication,
+		ServiceName: "AppsService",
+		ActionName:  "List",
+		Handler:     handler.handleList,
 		Method:      http.MethodPost,
 	})
 }
 
-func (s *authServiceServer) handleAuthentication(w http.ResponseWriter, r *http.Request) {
-
+func (s *appsServiceServer) handleList(w http.ResponseWriter, r *http.Request) {
 	body, ok := r.Context().Value(proto.BodyCtxKey).([]byte)
 	if !ok {
 		s.server.OnError(w, r, errors.New("cannot decode body"))
 		return
 	}
 
-	var req AuthReq
+	var req ListReq
 	if err := json.Unmarshal(body, &req); err != nil {
 		s.server.OnError(w, r, err)
 		return
 	}
 
-	res, err := s.service.Auth(r.Context(), req)
+	res, err := s.service.List(r.Context(), req)
 	if err != nil {
 		s.server.OnError(w, r, err)
 		return
@@ -70,9 +61,9 @@ func (s *authServiceServer) handleAuthentication(w http.ResponseWriter, r *http.
 	}
 
 	orbitalMessage, _ := proto.Encode(sk, &cryptographer.Metadata{
-		Domain:        Domain,
-		Action:        ActionLogin,
-		CorrelationID: req.PublicKey,
+		Domain: Domain,
+		Action: ActionList,
+		Tags:   nil,
 	}, res)
 
 	if err = orbital.Encode(w, r, http.StatusOK, orbitalMessage); err != nil {

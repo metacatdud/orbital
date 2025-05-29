@@ -1,5 +1,3 @@
-// Package orbital Package api Async exists to wrap the underlying fetch function which cause the not handled
-// promise block the main event loop block and an immediate deadlock
 package transport
 
 import (
@@ -10,7 +8,7 @@ type Async struct {
 	wg sync.WaitGroup
 }
 
-// Async executes a function asynchronously without returning a value
+// Async executes a function asynchronously without returning a value simmilar to a JS callback
 func (a *Async) Async(fn func()) {
 	a.wg.Add(1)
 	go func() {
@@ -19,6 +17,8 @@ func (a *Async) Async(fn func()) {
 	}()
 }
 
+// Wait for all async executions to finish.
+// Use this only if parallel execution of more than two async calls is required
 func (a *Async) Wait() {
 	a.wg.Wait()
 }

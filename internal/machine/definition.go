@@ -13,7 +13,7 @@ type AllDataReq struct {
 }
 
 // SystemInfo basic aggregation struct
-// TODO: Detail this for better experience latter on
+// TODO: Detail this with properties for better experience latter on
 type SystemInfo map[string]interface{}
 
 type AllDataResp struct {

@@ -6,7 +6,15 @@ import (
 	"orbital/pkg/cryptographer"
 )
 
-type Message = cryptographer.Message
+type (
+	CtxKey  string
+	Message = cryptographer.Message
+)
+
+const (
+	BodyCtxKey      CtxKey = "body"
+	PublicKeyCtxKey CtxKey = "publicKey"
+)
 
 var TimestampNow = cryptographer.Now
 

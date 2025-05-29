@@ -2,6 +2,7 @@ package machine
 
 import (
 	"context"
+	"orbital/config"
 	"orbital/orbital"
 	"orbital/pkg/cryptographer"
 	"orbital/pkg/jobber"
@@ -11,24 +12,21 @@ import (
 )
 
 type Dependencies struct {
-	Log    *logger.Logger
-	NodePk *cryptographer.PrivateKey
-	Ws     *orbital.WsConn
+	Log *logger.Logger
+	Ws  *orbital.WsConn
 }
 
 type Machine struct {
-	jr     *jobber.Runner
-	log    *logger.Logger
-	nodePk *cryptographer.PrivateKey
-	ws     *orbital.WsConn
+	jr  *jobber.Runner
+	log *logger.Logger
+	ws  *orbital.WsConn
 }
 
 func NewService(deps Dependencies) *Machine {
 	m := &Machine{
-		jr:     jobber.New(5),
-		log:    deps.Log,
-		nodePk: deps.NodePk,
-		ws:     deps.Ws,
+		jr:  jobber.New(5),
+		log: deps.Log,
+		ws:  deps.Ws,
 	}
 
 	m.jr.AddJob(10*time.Second, jobber.MaxRunInfinte, func() {
@@ -40,10 +38,19 @@ func NewService(deps Dependencies) *Machine {
 
 func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 
-	// DUMMY SERVER KEYS
-	_, sk, _ := cryptographer.GenerateKeysPair()
-	meta := &orbital.WsMetadata{
-		Topic: "ws:orbital:machine",
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	sk, err := cryptographer.NewPrivateKeyFromString(cfg.SecretKey)
+	if err != nil {
+		return err
+	}
+
+	meta := &cryptographer.Metadata{
+		Domain: "machine",
+		Action: "jobAllData",
 	}
 
 	body := &AllDataResp{}

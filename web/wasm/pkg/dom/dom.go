@@ -1,6 +1,7 @@
 package dom
 
 import (
+	"fmt"
 	"strings"
 	"syscall/js"
 )
@@ -110,14 +111,6 @@ func RemoveElement(element js.Value) {
 	}
 }
 
-func GetValue(selector string) string {
-	elem := QuerySelector(selector)
-	if elem.IsNull() {
-		return ""
-	}
-	return elem.Get("value").String()
-}
-
 func AddEventListener(selector, event string, callback func(js.Value, []js.Value) interface{}) {
 	elem := QuerySelector(selector)
 	if elem.IsNull() {
@@ -151,5 +144,64 @@ func RemoveClass(element js.Value, className string) {
 func ToggleClass(element js.Value, className string) {
 	if element.Truthy() {
 		element.Get("classList").Call("toggle", className)
+	}
+}
+
+func GetValue(attr, key string) string {
+	sel := fmt.Sprintf("[data-%s='%s']", attr, key)
+	el := QuerySelector(sel)
+	if el.IsNull() || el.IsUndefined() {
+		return ""
+	}
+
+	// Try getting value from input, select, textarea
+	if v := el.Get("value"); v.Type() == js.TypeString {
+		// Handle radio buttons
+		if el.Get("type").String() == "radio" {
+			if !el.Get("checked").Bool() {
+				return ""
+			}
+		}
+		return v.String()
+	}
+
+	// Fallback to textContent
+	if t := el.Get("textContent"); t.Type() == js.TypeString {
+		return strings.TrimSpace(t.String())
+	}
+
+	return ""
+}
+
+func SetValue(attr, key, val string) {
+	sel := fmt.Sprintf("[data-%s='%s']", attr, key)
+	el := QuerySelector(sel)
+	if el.IsNull() || el.IsUndefined() {
+		ConsoleError("selector not found", sel)
+		return
+	}
+
+	switch el.Get("nodeName").String() {
+	case "INPUT":
+		typ := el.Get("type").String()
+		switch typ {
+		case "checkbox":
+			realVal := strings.ToLower(val)
+			el.Set("checked", realVal == "true" || realVal == "1" || realVal == "on")
+		case "radio":
+			el.Set("checked", true)
+		default:
+			el.Set("value", val)
+		}
+	case "SELECT":
+		el.Set("value", val)
+	case "OPTION":
+		el.Set("value", val)
+
+		if el.Get("value").String() == val {
+			el.Set("selected", true)
+		}
+	default:
+		el.Set("textContent", val)
 	}
 }
