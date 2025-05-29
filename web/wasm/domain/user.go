@@ -1,31 +1,35 @@
 package domain
 
-import (
-	"encoding/json"
-	"orbital/web/wasm/pkg/transport"
-)
+import "orbital/web/wasm/pkg/storage"
 
 const (
-	UserStorageKey = "user"
+	UserStorageKey RepositoryKey = "user"
 )
 
 type User struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	PublicKey string `json:"publicKey"`
-	Access    string `json:"access"`
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Access string `json:"access"`
 }
 
-type LoginMessage struct {
-	PublicKey string `json:"publicKey"`
+type UserRepository struct {
+	base Repository[User]
 }
 
-type LoginResponse struct {
-	Code  int                      `json:"code"`
-	User  *User                    `json:"user"`
-	Error *transport.ErrorResponse `json:"error,omitempty"`
+func NewUserRepository(db storage.Storage) *UserRepository {
+	return &UserRepository{
+		base: NewRepository[User](db, UserStorageKey),
+	}
 }
 
-func (msg *LoginResponse) UnmarshalBinary(data []byte) error {
-	return json.Unmarshal(data, msg)
+func (u *UserRepository) Save(user User) error {
+	return u.base.Save(user)
+}
+
+func (u *UserRepository) Get() (*User, error) {
+	return u.base.Get()
+}
+
+func (u *UserRepository) Delete() error {
+	return u.base.Remove()
 }

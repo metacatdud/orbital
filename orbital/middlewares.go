@@ -21,7 +21,7 @@ func PanicRecoverMiddleware() Middleware {
 func LoggerMiddleware(log *logger.Logger) Middleware {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			log.Info("→", "method", r.Method, "path", r.URL.Path)
+			log.Info("Route", "method", r.Method, "path", r.URL.Path)
 			next(w, r)
 		}
 	}

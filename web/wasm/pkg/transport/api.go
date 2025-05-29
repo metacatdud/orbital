@@ -10,9 +10,12 @@ import (
 	"time"
 )
 
+type Middleware func(raw []byte) ([]byte, error)
+
 type API struct {
 	defaultHeaders map[string]string
 	urlPath        string
+	middlewares    []Middleware
 }
 
 func NewAPI(basePath string) *API {
@@ -22,11 +25,32 @@ func NewAPI(basePath string) *API {
 			"Accept":          "application/json",
 			"Accept-Encoding": "gzip",
 		},
-		urlPath: basePath,
+		urlPath:     basePath,
+		middlewares: []Middleware{},
 	}
 }
 
+func (api *API) WithMiddleware(mw ...Middleware) {
+	api.middlewares = append(api.middlewares, mw...)
+}
+
 func (api *API) Do(data []byte, headers map[string]string) ([]byte, error) {
+	res, err := api.doCall(data, headers)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, mw := range api.middlewares {
+		res, err = mw(res)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return res, nil
+}
+
+func (api *API) doCall(data []byte, headers map[string]string) ([]byte, error) {
 	req, err := http.NewRequest(http.MethodPost, api.urlPath, bytes.NewBuffer(data))
 
 	if err != nil {
@@ -51,13 +75,16 @@ func (api *API) Do(data []byte, headers map[string]string) ([]byte, error) {
 	}
 	defer response.Body.Close()
 
-	var bodyReader = response.Body
+	var bodyReader io.Reader = response.Body
 	if strings.Contains(response.Header.Get("Content-Encoding"), "gzip") {
-		bodyReader, err = gzip.NewReader(response.Body)
+		var gz *gzip.Reader
+
+		gz, err = gzip.NewReader(response.Body)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decompress response body: %w", err)
 		}
-		defer bodyReader.Close()
+		defer gz.Close()
+		bodyReader = gz
 	}
 
 	body, err := io.ReadAll(bodyReader)

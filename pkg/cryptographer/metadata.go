@@ -25,7 +25,7 @@ type Metadata struct {
 	Action        string            `json:"action"` // e.g., "register", "rotate", "send", "request"
 	Nonce         string            `json:"nonce"`  // optional nonce for replay protection
 	CorrelationID string            `json:"cid"`    // track message flow/threads
-	Tags          map[string]string `json:"tags"`   // app-defined metadata
+	Tags          map[string]string `json:"tags"`   // custom defined tags
 }
 
 func (m *Metadata) Serialize() ([]byte, error) {

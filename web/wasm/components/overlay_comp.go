@@ -1,190 +1,147 @@
 package components
 
 import (
-	"bytes"
-	"errors"
-	"orbital/web/wasm/pkg/component"
-	"orbital/web/wasm/pkg/deps"
+	"fmt"
+	"orbital/web/wasm/orbital"
 	"orbital/web/wasm/pkg/dom"
 	"orbital/web/wasm/pkg/state"
 	"syscall/js"
 )
 
-type OverlayComponentFields struct {
-	Title string
-	Icon  string
-}
-
-func (fields *OverlayComponentFields) ToMap() map[string]interface{} {
-	return map[string]interface{}{
-		"title": fields.Title,
-		"icon":  fields.Icon,
-	}
-}
+const (
+	OverlayComponentRegKey RegKey = "overlayComponent"
+)
 
 type OverlayComponent struct {
-	di           *deps.Dependency
-	docks        map[string]js.Value
-	element      js.Value
-	fields       OverlayComponentFields
-	unwatchState []func()
-	state        *state.State
+	*BaseComponent
+	child Component
+	state *state.State
 }
 
-var _ component.ContainerComponent = (*OverlayComponent)(nil)
-var _ component.StateControl = (*OverlayComponent)(nil)
-
-func NewOverlayComponent(di *deps.Dependency) *OverlayComponent {
+func NewOverlayComponent(di *orbital.Dependency) *OverlayComponent {
+	base := NewBaseComponent(di, OverlayComponentRegKey, "orbital/overlay/overlay")
 	comp := &OverlayComponent{
-		di:     di,
-		fields: OverlayComponentFields{},
-		docks:  make(map[string]js.Value),
-		state:  di.State(),
+		BaseComponent: base,
+		state:         di.State,
 	}
 
-	comp.init()
 	return comp
 }
 
-func (comp *OverlayComponent) ID() string {
-	return "overlay"
-}
-
-func (comp *OverlayComponent) Namespace() string {
-	return "orbital/overlay/overlay"
+func (comp *OverlayComponent) ID() RegKey {
+	return OverlayComponentRegKey
 }
 
 func (comp *OverlayComponent) Mount(container *js.Value) error {
-	if !container.Truthy() {
-		return errors.New("container does not exist")
+
+	// Check state and set default
+	if rawState := comp.DI.State.Get("overlayChild"); rawState == nil {
+		comp.state.Set("overlayChild", LoginComponentRegKey)
 	}
 
-	if comp.element.IsNull() {
-		return errors.New("element is missing")
+	childName := comp.state.Get("overlayChild").(RegKey)
+
+	// Lookup new component
+	childComp, err := LookupComponent(childName, comp.DI)
+	if err != nil {
+		return err
 	}
 
-	dom.AppendChild(*container, comp.element)
+	// See if metadata is provided
+	title, icon := "", ""
+	if mp, ok := childComp.(MetaProvider); ok {
+		title, icon = mp.Title(), mp.Icon()
+	}
+
+	// Render overlay with data
+	html, err := comp.Render(map[string]interface{}{
+		"title": title,
+		"icon":  icon,
+	})
+	if err != nil {
+		dom.ConsoleError("cannot render overlay", err.Error())
+		return err
+	}
+
+	el := dom.CreateElementFromString(html)
+
+	dom.AppendChild(*container, el)
+
+	comp.element = &el
+	comp.RegisterContainers()
+
+	// Prepare and mount child
+	comp.child = childComp
+	overlayBody := comp.GetContainer("overlayBody")
+	if overlayBody.IsNull() {
+		return fmt.Errorf("dock area [overlayBody] not found")
+	}
 
 	comp.bindUIEvents()
+
+	if err = childComp.Mount(&overlayBody); err != nil {
+		return fmt.Errorf("cannot mount overlay component %s", childName)
+	}
+
+	comp.state.Set("state:overlay:toggle", true)
+
+	// TODO: Redo this as it turns very ugly
+	//comp.state.Watch("overlayChild", func(_, newValue any) {
+	//	newV := newValue.(RegKey)
+	//	dom.ConsoleLog("Change child", newV)
+	//
+	//	//// Unmount old child if any
+	//	//if comp.child != nil {
+	//	//	comp.child.Unmount()
+	//	//}
+	//	//
+	//	//// Lookup new component
+	//	//childComp, err = LookupComponent(newV, comp.DI)
+	//	//if err != nil {
+	//	//	dom.ConsoleError("cannot find overlay component", err.Error())
+	//	//	return
+	//	//}
+	//	//
+	//	//comp.child = childComp
+	//	//
+	//	//title, icon = "", ""
+	//	//if mp, ok := childComp.(MetaProvider); ok {
+	//	//	title, icon = mp.Title(), mp.Icon()
+	//	//}
+	//	//
+	//	//// Render overlay with data
+	//	//html, err = comp.Render(map[string]interface{}{
+	//	//	"title": title,
+	//	//	"icon":  icon,
+	//	//})
+	//	//if err != nil {
+	//	//	dom.ConsoleError("cannot render overlay", err.Error())
+	//	//	return
+	//	//}
+	//	//
+	//	//el := dom.CreateElementFromString(html)
+	//
+	//})
 
 	return nil
 }
 
 func (comp *OverlayComponent) Unmount() error {
-	if !comp.element.IsNull() {
-		dom.RemoveElement(comp.element)
-		comp.element = js.Null()
+	comp.state.Set("state:overlay:toggle", false)
+	if comp.child != nil {
+		comp.child.Unmount()
 	}
 
-	comp.unbindUIEvents()
+	return comp.BaseComponent.Unmount()
+}
+
+func (comp *OverlayComponent) bindUIEvents() {
+	dom.AddEventListener(`[data-action="closeOverlay"]`, "click", comp.uiEventOverlayClose)
+}
+
+func (comp *OverlayComponent) uiEventOverlayClose(_ js.Value, args []js.Value) interface{} {
+	comp.Unmount()
 	return nil
 }
 
-func (comp *OverlayComponent) Render() error {
-	tpl, err := comp.di.TplRegistry().Get(comp.Namespace())
-	if err != nil {
-		return err
-	}
-
-	var buf bytes.Buffer
-	if err = tpl.Execute(&buf, comp.fields.ToMap()); err != nil {
-		return err
-	}
-
-	comp.element = dom.CreateElementFromString(buf.String())
-	comp.SetContainers()
-
-	return nil
-}
-
-func (comp *OverlayComponent) SetFields(fields OverlayComponentFields) {
-	comp.fields = fields
-}
-
-func (comp *OverlayComponent) BindStateWatch() {
-	comp.state.Set("state:overlay:activeComponent", "")
-
-	var unwatchFn func()
-
-	unwatchFn = comp.state.Watch("state:overlay:activeComponent", comp.stateOverlayActiveComponent)
-
-	comp.unwatchState = append(comp.unwatchState, unwatchFn)
-}
-
-func (comp *OverlayComponent) UnbindStateWatch() {
-	for _, unwatchFn := range comp.unwatchState {
-		unwatchFn()
-	}
-}
-
-func (comp *OverlayComponent) GetContainer(name string) js.Value {
-	container, ok := comp.docks[name]
-	if !ok {
-		return js.Null()
-	}
-
-	if container.IsNull() {
-		return js.Null()
-	}
-
-	return container
-}
-
-func (comp *OverlayComponent) SetContainers() {
-	if comp.element.IsNull() {
-		dom.ConsoleError("element is missing", comp.ID())
-		return
-	}
-
-	dockingAreas := dom.QuerySelectorAllFromElement(comp.element, `[data-dock]`)
-	for _, area := range dockingAreas {
-		areaName := area.Get("dataset").Get("dock").String()
-		comp.docks[areaName] = area
-	}
-}
-
-func (comp *OverlayComponent) init() {
-	comp.BindStateWatch()
-}
-
-func (comp *OverlayComponent) stateOverlayActiveComponent(oldActiveComp, newActiveComp interface{}) {
-	newComp := newActiveComp.(string)
-	oldComp := oldActiveComp.(string)
-
-	dom.ConsoleLog("[OverlayComponent] state", oldComp, newComp)
-
-	if newComp == oldComp {
-		return
-	}
-
-	switch newActiveComp {
-	case "login":
-
-		comp.SetFields(OverlayComponentFields{
-			Title: "Login",
-			Icon:  "fa-lock",
-		})
-
-		container := comp.GetContainer("overlayData")
-		if container.IsNull() {
-			dom.ConsoleError("overlay component container is null", "login")
-			return
-		}
-		dom.SetInnerHTML(container, "")
-
-		loginComp := NewLoginComponent(comp.di)
-		if err := loginComp.Render(); err != nil {
-			dom.ConsoleError("overlay component login render error", err.Error())
-			return
-		}
-
-		if err := loginComp.Mount(&container); err != nil {
-			dom.ConsoleError("overlay component login mounting error", err.Error())
-			return
-		}
-
-		dom.RemoveClass(comp.element, "hide")
-	case "register":
-		dom.ConsoleLog("Register not implemented")
-	}
-}
+//TODO: Make components report this in

@@ -8,7 +8,6 @@ import (
 	"orbital/internal/auth"
 	"orbital/internal/machine"
 	"orbital/orbital"
-	"orbital/pkg/cryptographer"
 	"orbital/pkg/db"
 	"orbital/pkg/logger"
 	"orbital/pkg/prompt"
@@ -69,11 +68,6 @@ func setupAPIServer(cfg *config.Config) (*orbital.Server, *orbital.WsConn, error
 	}
 
 	// Dependencies and repositories
-	nodsPk, err := cryptographer.NewPrivateKeyFromString(cfg.SecretKey)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	log := logger.New(logger.LevelDebug, logger.FormatString)
 
 	userRepo := domain.NewUserRepository(dbClient)
@@ -85,15 +79,13 @@ func setupAPIServer(cfg *config.Config) (*orbital.Server, *orbital.WsConn, error
 	// Prepare services
 	authService := auth.NewService(auth.Dependencies{
 		Log:      log,
-		NodePk:   nodsPk,
 		UserRepo: userRepo,
 		Ws:       wsSrv,
 	})
 
 	machineService := machine.NewService(machine.Dependencies{
-		Log:    log,
-		NodePk: nodsPk,
-		Ws:     wsSrv,
+		Log: log,
+		Ws:  wsSrv,
 	})
 
 	// Register all service to server

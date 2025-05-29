@@ -7,27 +7,28 @@ import (
 )
 
 type stateItem struct {
-	value    interface{}
-	oldValue interface{}
+	value    any
+	oldValue any
 	typeRef  reflect.Type
 }
 
 type State struct {
 	states   map[string]stateItem
-	watchers map[string][]func(oldValue, newValue interface{})
+	watchers map[string][]func(oldValue, newValue any)
 	mu       sync.RWMutex
 }
 
 func New() *State {
 	return &State{
 		states:   make(map[string]stateItem),
-		watchers: make(map[string][]func(oldValue, newValue interface{})),
+		watchers: make(map[string][]func(oldValue, newValue any)),
 	}
 }
 
-func (s *State) Get(key string) interface{} {
+func (s *State) Get(key string) any {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+
 	item, ok := s.states[key]
 	if !ok {
 		return nil
@@ -35,18 +36,18 @@ func (s *State) Get(key string) interface{} {
 	return item.value
 }
 
-func (s *State) GetAll() map[string]interface{} {
+func (s *State) GetAll() map[string]any {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	stateCopy := make(map[string]interface{}, len(s.states))
+	stateCopy := make(map[string]any, len(s.states))
 	for k, item := range s.states {
 		stateCopy[k] = item.value
 	}
 	return stateCopy
 }
 
-func (s *State) Set(key string, value interface{}) {
+func (s *State) Set(key string, value any) {
 	s.mu.Lock()
 
 	newType := reflect.TypeOf(value)
@@ -58,7 +59,7 @@ func (s *State) Set(key string, value interface{}) {
 
 	// Reject pointer values.
 	if newType.Kind() == reflect.Ptr {
-		dom.ConsoleLog("pointer types are not supported for key", key, " Received pointer", newType)
+		dom.ConsoleError("pointer types are not supported for key", key, " Received pointer", newType)
 		s.mu.Unlock()
 		return
 	}
@@ -101,7 +102,7 @@ func (s *State) Set(key string, value interface{}) {
 
 }
 
-func (s *State) Watch(key string, callback func(oldValue, newValue interface{})) func() {
+func (s *State) Watch(key string, callback func(oldValue, newValue any)) func() {
 	s.mu.Lock()
 	s.watchers[key] = append(s.watchers[key], callback)
 	s.mu.Unlock()
@@ -120,7 +121,7 @@ func (s *State) Watch(key string, callback func(oldValue, newValue interface{}))
 	}
 }
 
-func (s *State) setStructObserver(key string, oldValue, newValue interface{}) {
+func (s *State) setStructObserver(key string, oldValue, newValue any) {
 
 	oldVal := reflect.ValueOf(oldValue)
 	newVal := reflect.ValueOf(newValue)

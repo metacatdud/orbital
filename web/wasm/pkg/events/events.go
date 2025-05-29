@@ -2,23 +2,26 @@ package events
 
 import (
 	"fmt"
+	"orbital/web/wasm/pkg/dom"
 	"reflect"
 	"sync"
 	"sync/atomic"
 )
 
-var Global = New()
+type EventSubscriber interface {
+	HookEvents(e *Event)
+}
 
 type Handler struct {
 	id       uint64
-	Callback interface{}
+	Callback any
 	Once     bool
 }
 
 type Event struct {
 	mu        sync.RWMutex
 	listeners map[string][]*Handler
-	counter   uint64
+	counter   atomic.Uint64
 }
 
 func New() *Event {
@@ -28,23 +31,23 @@ func New() *Event {
 }
 
 // On creates a listener for an event and returns an unsubscribe function.
-func (e *Event) On(eventName string, handler interface{}) func() {
+func (e *Event) On(eventName string, handler any) func() {
 	return e.register(eventName, handler, false)
 }
 
 // Once creates a one-time listener for an event and returns an unsubscribe function.
-func (e *Event) Once(eventName string, handler interface{}) func() {
+func (e *Event) Once(eventName string, handler any) func() {
 	return e.register(eventName, handler, true)
 }
 
-// Remove deletes all listeners for a given event.
-func (e *Event) Remove(eventName string) {
+// RemoveAll deletes all listeners for a given event.
+func (e *Event) RemoveAll(eventName string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	delete(e.listeners, eventName)
 }
 
-func (e *Event) Emit(eventName string, params ...interface{}) {
+func (e *Event) Emit(eventName string, params ...any) {
 
 	e.mu.RLock()
 
@@ -54,50 +57,52 @@ func (e *Event) Emit(eventName string, params ...interface{}) {
 		return
 	}
 
-	// Copy the slice to avoid race conditions if it gets modified during iteration.
+	// Copy the slice to avoid race conditions if handler gets
+	// modified during iteration.
 	copiedHandlers := make([]*Handler, len(handlers))
 	copy(copiedHandlers, handlers)
 
 	e.mu.RUnlock()
 
-	var onceIDs []uint64
+	var oneTimeEventIDs []uint64
 	for _, h := range copiedHandlers {
 		e.callHandler(h.Callback, params)
 		if h.Once {
-			onceIDs = append(onceIDs, h.id)
+			oneTimeEventIDs = append(oneTimeEventIDs, h.id)
 		}
 	}
 
-	if len(onceIDs) > 0 {
+	if len(oneTimeEventIDs) > 0 {
 		e.mu.Lock()
-		currentHandlers, ok := e.listeners[eventName]
-		if ok {
-			newHandlers := currentHandlers[:0]
-			for _, h := range currentHandlers {
-				remove := false
-				for _, id := range onceIDs {
-					if h.id == id {
-						remove = true
-						break
-					}
-				}
-				if !remove {
-					newHandlers = append(newHandlers, h)
+		defer e.mu.Unlock()
+
+		currentHandlers := e.listeners[eventName]
+		newHandlers := currentHandlers[:0]
+		for _, h := range currentHandlers {
+			keep := true
+			for _, id := range oneTimeEventIDs {
+				if id == h.id {
+					keep = false
+					break
 				}
 			}
 
-			e.listeners[eventName] = newHandlers
+			if keep {
+				newHandlers = append(newHandlers, h)
+			}
 		}
-		e.mu.Unlock()
+
+		e.listeners[eventName] = newHandlers
 	}
 }
 
-func (e *Event) callHandler(handler interface{}, params []interface{}) {
-	handlerValue := reflect.ValueOf(handler)
-	handlerType := handlerValue.Type()
+func (e *Event) callHandler(handler any, params []any) {
+	hVal := reflect.ValueOf(handler)
+	hType := hVal.Type()
 
-	if len(params) != handlerType.NumIn() {
-		panic(fmt.Sprintf("handler expects %d parameters, got %d", handlerType.NumIn(), len(params)))
+	if len(params) != hType.NumIn() {
+		dom.ConsoleWarn(fmt.Sprintf("handler expects %d parameters, got %d", hType.NumIn(), len(params)))
+		return
 	}
 
 	args := make([]reflect.Value, len(params))
@@ -105,25 +110,25 @@ func (e *Event) callHandler(handler interface{}, params []interface{}) {
 		args[i] = reflect.ValueOf(p)
 	}
 
-	handlerValue.Call(args)
+	hVal.Call(args)
 }
 
-func (e *Event) register(eventName string, handler interface{}, once bool) func() {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-
+func (e *Event) register(eventName string, handler any, once bool) func() {
 	if reflect.TypeOf(handler).Kind() != reflect.Func {
-		panic(fmt.Sprintf("handler for event %s is not a function", eventName))
+		dom.ConsoleWarn(fmt.Sprintf("handler for event %s is not a function", eventName))
+		return func() {}
 	}
 
-	id := atomic.AddUint64(&e.counter, 1)
+	id := e.counter.Add(1)
 	h := &Handler{
 		id:       id,
 		Callback: handler,
 		Once:     once,
 	}
 
+	e.mu.Lock()
 	e.listeners[eventName] = append(e.listeners[eventName], h)
+	e.mu.Unlock()
 
 	return func() {
 		e.off(eventName, id)
@@ -139,7 +144,6 @@ func (e *Event) off(eventName string, handlerID uint64) {
 		return
 	}
 
-	// Filter out the handler with the matching ID.
 	newHandlers := handlers[:0]
 	for _, h := range handlers {
 		if h.id != handlerID {

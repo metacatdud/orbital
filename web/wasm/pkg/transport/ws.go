@@ -2,6 +2,7 @@ package transport
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"orbital/pkg/proto"
@@ -10,13 +11,7 @@ import (
 	"time"
 )
 
-type (
-	WsMetadata struct {
-		Topic string `json:"topic"`
-	}
-	
-	HandlerFunc func(data []byte)
-)
+type HandlerFunc func(data []byte)
 
 type WsConn struct {
 	client       js.Value
@@ -31,19 +26,35 @@ type WsConn struct {
 	reconnectInProgress  bool
 }
 
+func NewWsConn(binaryMode bool) *WsConn {
+
+	wsConn := &WsConn{
+		topics:               make(map[string]HandlerFunc),
+		isOpen:               false,
+		allowsBinary:         binaryMode,
+		reconnect:            true,
+		reconnectInterval:    5 * time.Second,
+		maxReconnectAttempts: 3,
+	}
+
+	wsConn.init()
+
+	return wsConn
+}
+
 func (ws *WsConn) IsOpen() bool {
 	return ws.isOpen
 }
 
 func (ws *WsConn) Send(msg proto.Message) {
 	if !ws.isOpen {
-		dom.ConsoleLog("WebSocket closed")
+		dom.ConsoleWarn("WebSocket closed")
 		return
 	}
 
 	raw, err := json.Marshal(msg)
 	if err != nil {
-		dom.ConsoleLog(err.Error())
+		dom.ConsoleError(err.Error())
 		return
 	}
 
@@ -147,7 +158,7 @@ func (ws *WsConn) routeMessage(raw []byte) {
 
 	var msg *proto.Message
 	if err := json.Unmarshal(raw, &msg); err != nil {
-		dom.ConsoleLog("[routeMessage] not valid JSON, fallback to raw textData")
+		dom.ConsoleLog("[routeMessage] not valid JSON")
 		return
 	}
 
@@ -162,15 +173,19 @@ func (ws *WsConn) routeMessage(raw []byte) {
 		return
 	}
 
-	var metadata WsMetadata
-	if err = json.Unmarshal(msg.Metadata, &metadata); err != nil {
-		dom.ConsoleLog("[routeMessage] not valid msg.Metadata format, fallback to raw textData")
-		return
+	var t string
+	if msg.Metadata != nil {
+		dom.ConsoleLog(msg.Metadata)
+		t, err = topic(msg.Metadata.Domain, msg.Metadata.Action, msg.Metadata.CorrelationID)
+		if err != nil {
+			dom.ConsoleLog(err.Error())
+			return
+		}
 	}
 
-	handler, exists := ws.topics[metadata.Topic]
+	handler, exists := ws.topics[t]
 	if !exists {
-		dom.ConsoleLog("[routeMessage] topic not found", metadata.Topic)
+		dom.ConsoleLog("[routeMessage] topic not found", t)
 		return
 	}
 
@@ -207,22 +222,6 @@ func (ws *WsConn) scheduleReconnect() {
 	})
 }
 
-func NewWsConn(binaryMode bool) *WsConn {
-
-	wsConn := &WsConn{
-		topics:               make(map[string]HandlerFunc),
-		isOpen:               false,
-		allowsBinary:         binaryMode,
-		reconnect:            true,
-		reconnectInterval:    5 * time.Second,
-		maxReconnectAttempts: -1,
-	}
-
-	wsConn.init()
-
-	return wsConn
-}
-
 // createWebSocketURL determine the URL for websocket
 func createWebSocketURL() string {
 	location := js.Global().Get("window").Get("location")
@@ -239,4 +238,21 @@ func createWebSocketURL() string {
 		return fmt.Sprintf("%s://%s/ws", wsProtocol, hostname)
 	}
 	return fmt.Sprintf("%s://%s:%s/ws", wsProtocol, hostname, port)
+}
+
+func topic(domain, action string, cid ...string) (string, error) {
+	if domain == "" {
+		return "", errors.New("domain is required")
+	}
+
+	if action == "" {
+		return "", errors.New("action is required")
+	}
+
+	t := fmt.Sprintf("%s/%s", domain, action)
+	if len(cid) != 0 && cid[0] != "" {
+		t = fmt.Sprintf("%s/%s", t, cid[0])
+	}
+
+	return t, nil
 }

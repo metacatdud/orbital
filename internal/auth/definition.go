@@ -6,7 +6,7 @@ import (
 )
 
 type AuthService interface {
-	Auth(ctx context.Context, connID string, req AuthReq) error
+	Auth(ctx context.Context, req AuthReq) (*AuthResp, error)
 }
 
 type AuthReq struct {

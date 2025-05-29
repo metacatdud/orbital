@@ -2,158 +2,108 @@ package components
 
 import (
 	"bytes"
-	"errors"
-	"orbital/web/wasm/pkg/component"
-	"orbital/web/wasm/pkg/deps"
+	"orbital/web/wasm/orbital"
 	"orbital/web/wasm/pkg/dom"
+	"orbital/web/wasm/pkg/transport"
+	"orbital/web/wasm/service"
 	"syscall/js"
 )
 
+const (
+	LoginComponentRegKey RegKey = "loginComponent"
+)
+
 type LoginComponent struct {
-	di           *deps.Dependency
-	docks        map[string]js.Value
-	element      js.Value
-	unwatchState []func()
+	*BaseComponent
+	authSvc *service.AuthService
 }
 
-var _ component.ContainerComponent = (*LoginComponent)(nil)
-var _ component.EventControl = (*LoginComponent)(nil)
-var _ component.StateControl = (*LoginComponent)(nil)
+var _ MetaProvider = (*LoginComponent)(nil)
 
-func NewLoginComponent(di *deps.Dependency) *LoginComponent {
+func NewLoginComponent(di *orbital.Dependency) *LoginComponent {
+	base := NewBaseComponent(di, LoginComponentRegKey, "auth/auth/default")
+
+	authSvc := orbital.MustGetService[*service.AuthService](di, service.AuthServiceKey)
+
 	comp := &LoginComponent{
-		di:    di,
-		docks: make(map[string]js.Value),
+		BaseComponent: base,
+		authSvc:       authSvc,
 	}
-
-	comp.init()
-
-	return comp
-
-}
-
-func (comp *LoginComponent) ID() string {
-	return "login"
-}
-
-func (comp *LoginComponent) Namespace() string {
-	return "auth/auth/default"
-}
-
-func (comp *LoginComponent) Mount(container *js.Value) error {
-	if !container.Truthy() {
-		return errors.New("container does not exist")
-	}
-
-	if comp.element.IsNull() {
-		return errors.New("element is missing")
-	}
-
-	dom.AppendChild(*container, comp.element)
 
 	comp.bindUIEvents()
-
-	return nil
+	return comp
 }
 
-func (comp *LoginComponent) Unmount() error {
-	if !comp.element.IsNull() {
-		dom.RemoveElement(comp.element)
-		comp.element = js.Null()
-	}
-
-	comp.unbindUIEvents()
-	comp.UnbindStateWatch()
-
-	return nil
+func (comp *LoginComponent) ID() RegKey {
+	return LoginComponentRegKey
 }
 
-func (comp *LoginComponent) Render() error {
-	dom.ConsoleLog("- Rendering", comp.ID())
+func (comp *LoginComponent) Title() string { return "Login" }
 
-	tpl, err := comp.di.TplRegistry().Get(comp.Namespace())
+func (comp *LoginComponent) Icon() string { return "fa-lock" }
+
+func (comp *LoginComponent) renderError(errType, msg string) {
+	tpl, err := comp.DI.Templates.Get("auth/auth/errorMsg")
 	if err != nil {
-		return err
+		dom.ConsoleError("cannot load template", err.Error())
+		return
 	}
 
 	var buf bytes.Buffer
-	if err = tpl.Execute(&buf, nil); err != nil {
-		return err
-	}
-
-	comp.element = dom.CreateElementFromString(buf.String())
-	comp.SetContainers()
-
-	return nil
-}
-
-func (comp *LoginComponent) BindStateWatch() {
-	unwatchAuthFn := comp.di.State().Watch("state:auth:errored", comp.stateErrored)
-
-	comp.unwatchState = append(comp.unwatchState, unwatchAuthFn)
-}
-
-func (comp *LoginComponent) UnbindStateWatch() {
-	for _, unwatchFn := range comp.unwatchState {
-		unwatchFn()
-	}
-}
-
-func (comp *LoginComponent) GetContainer(name string) js.Value {
-	container, ok := comp.docks[name]
-	if !ok {
-		return js.Null()
-	}
-
-	if container.IsNull() {
-		return js.Null()
-	}
-
-	return container
-}
-
-func (comp *LoginComponent) SetContainers() {
-	if comp.element.IsNull() {
-		dom.ConsoleError("element is missing", comp.ID())
+	data := map[string]interface{}{"type": errType, "message": msg}
+	if err = tpl.Execute(&buf, data); err != nil {
+		dom.ConsoleError("cannot execute template", err.Error())
 		return
 	}
-
-	dockingAreas := dom.QuerySelectorAllFromElement(comp.element, `[data-dock]`)
-	for _, area := range dockingAreas {
-		areaName := area.Get("dataset").Get("dock").String()
-		comp.docks[areaName] = area
-	}
-}
-
-func (comp *LoginComponent) init() {
-	comp.BindEvents()
-	comp.BindStateWatch()
-}
-
-func (comp *LoginComponent) stateErrored(_, newValue interface{}) {
 
 	container := comp.GetContainer("errorMessage")
 	if container.IsNull() {
-		dom.ConsoleError("overlay component container is null", "errorComp")
+		dom.ConsoleError("cannot find errorMessage container")
 		return
 	}
-	dom.AddClass(container, "hidden")
+
+	dom.SetInnerHTML(container, buf.String())
+	dom.RemoveClass(container, "hide")
+
+}
+
+func (comp *LoginComponent) clearError() {
+	container := comp.GetContainer("errorMessage")
+	if container.IsNull() {
+		dom.ConsoleError("cannot find errorMessage container")
+		return
+	}
+
+	dom.AddClass(container, "hide")
 	dom.SetInnerHTML(container, "")
+}
 
-	errFields := newValue.(ErrorManagerFields)
+func (comp *LoginComponent) bindUIEvents() {
+	comp.AddEventHandler("[data-action='login']", "click", comp.uiEventLogin)
+}
 
-	errMgr := NewErrorManager(comp.di)
-	errMgr.SetFields(errFields)
+func (comp *LoginComponent) uiEventLogin(_ js.Value, args []js.Value) interface{} {
+	var async transport.Async
+	async.Async(func() {
 
-	if err := errMgr.Render(); err != nil {
-		dom.ConsoleError("Cannot render errMsg", err.Error())
+		skInput := dom.GetValue("input", "privateKey")
+		res, err := comp.authSvc.Login(service.LoginReq{
+			SecretKey: skInput,
+		})
+
+		if err != nil {
+			comp.renderError("auth.failed", err.Error())
+			return
+		}
+
+		if res.Error != nil {
+			comp.renderError(res.Error.Type, res.Error.Msg)
+			return
+		}
+
+		comp.clearError()
+
 		return
-	}
-
-	if err := errMgr.Mount(&container); err != nil {
-		dom.ConsoleError("Cannot mount errMsg", err.Error())
-		return
-	}
-
-	dom.RemoveClass(container, "hidden")
+	})
+	return nil
 }
