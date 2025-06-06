@@ -1,3 +1,21 @@
+## v0.3.0 (2025-06-06)
+
+### Feat
+
+- component integration
+- add middleware support
+- add crypto message metadata property
+- moved config in user space
+- add port flag to start command
+
+### Fix
+
+- auth process
+
+### Refactor
+
+- wasm engine
+
 ## v0.2.1 (2025-03-10)
 
 ### Feat
