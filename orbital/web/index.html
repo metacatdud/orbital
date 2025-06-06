@@ -4,24 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Orbital</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<!--    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />-->
     <link rel="stylesheet" href="orbital.css">
 </head>
 
 <body>
-<div id="loading">
+<div id="loading-screen" class="loading-widget">
     <div class="p-6 max-w-sm">
         <div class="spinner"></div>
         <div class="loading-text">Loading ...</div>
     </div>
 </div>
 
-<div id="rootEl"></div>
+<div id="app-screen" class="app-widget"></div>
 
 <script src="wasm_exec.js"></script>
 <script type="module">
-    const brotli = await import("https://unpkg.com/brotli-wasm@3.0.1/index.web.js?module")
-        .then(m => m.default);
+    // const brotli = await import("https://unpkg.com/brotli-wasm@3.0.1/index.web.js?module")
+    //     .then(m => m.default);
+    const brotli = null
     const go = new Go();
 
     async function loadOrbital() {

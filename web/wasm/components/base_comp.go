@@ -8,6 +8,12 @@ import (
 	"syscall/js"
 )
 
+type uiEventHandler struct {
+	selector string
+	event    string
+	cb       js.Func
+}
+
 type BaseComponent struct {
 	DI        *orbital.Dependency
 	id        RegKey
@@ -18,11 +24,7 @@ type BaseComponent struct {
 
 	onInit, onMount, onUpdate, onUnmount func()
 
-	uiEventHandlers []struct {
-		selector string
-		event    string
-		cb       func(js.Value, []js.Value) interface{}
-	}
+	uiEventHandlers []uiEventHandler
 
 	unwatchFns []func()
 	observers  []ParentRenderObserver
@@ -58,16 +60,51 @@ func (comp *BaseComponent) OnUnmount(fn func()) {
 }
 
 func (comp *BaseComponent) AddEventHandler(sel, evt string, cb func(js.Value, []js.Value) interface{}) {
-	comp.uiEventHandlers = append(comp.uiEventHandlers,
-		struct {
-			selector string
-			event    string
-			cb       func(js.Value, []js.Value) interface{}
-		}{
-			selector: sel,
-			event:    evt,
-			cb:       cb,
-		})
+
+	cbWrap := js.FuncOf(cb)
+	uiHandler := uiEventHandler{
+		selector: sel,
+		event:    evt,
+		cb:       cbWrap,
+	}
+	comp.uiEventHandlers = append(comp.uiEventHandlers, uiHandler)
+}
+
+func (comp *BaseComponent) RemoveAllEventHandlers() {
+	dom.ConsoleLog("Uninstalling all event handlers", comp.ID())
+	for _, uh := range comp.uiEventHandlers {
+		el := dom.QuerySelector(uh.selector)
+		if !el.IsNull() {
+			dom.RemoveEventListener(uh.selector, uh.event, uh.cb)
+		}
+
+		uh.cb.Release()
+	}
+
+	comp.uiEventHandlers = nil
+}
+
+func (comp *BaseComponent) RemoveEventHandler(sel, evt string) int {
+	remaining := comp.uiEventHandlers[:0]
+	removed := 0
+
+	for _, uh := range comp.uiEventHandlers {
+		if uh.selector == sel && uh.event == evt {
+			el := dom.QuerySelector(uh.selector)
+			if !el.IsNull() {
+				el.Call("removeEventListener", uh.selector, uh.event, uh.cb)
+			}
+
+			uh.cb.Release()
+			removed++
+		} else {
+			remaining = append(remaining, uh)
+		}
+	}
+
+	comp.uiEventHandlers = remaining
+
+	return removed
 }
 
 func (comp *BaseComponent) Watch(key string, cb func(oldV, newV interface{})) {
@@ -158,7 +195,10 @@ func (comp *BaseComponent) Mount(container *js.Value) error {
 
 func (comp *BaseComponent) Unmount() error {
 
-	// Cleanup state
+	// Cleanup UI events
+	comp.RemoveAllEventHandlers()
+
+	// Cleanup states
 	for _, unwatchFn := range comp.unwatchFns {
 		unwatchFn()
 	}
@@ -199,7 +239,24 @@ func (comp *BaseComponent) update() {
 		return
 	}
 
-	(*comp.element).Set("innerHTML", html)
+	newEl := dom.CreateElementFromString(html)
+	parent := (*comp.element).Get("parentNode")
+	if parent.IsNull() {
+		return
+	}
+
+	parent.Call("replaceChild", newEl, comp.element)
+
+	comp.element = &newEl
+	comp.RegisterContainers()
+
+	for _, uh := range comp.uiEventHandlers {
+		el := dom.QuerySelector(uh.selector)
+		if !el.IsNull() {
+			el.Call("addEventListener", uh.event, uh.cb)
+		}
+	}
+
 	for _, ob := range comp.observers {
 		ob.OnParentRender()
 	}

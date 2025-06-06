@@ -10,6 +10,7 @@ import (
 const (
 	Domain      = "auth"
 	ActionLogin = "login"
+	ActionCheck = "check"
 )
 
 type Dependencies struct {
@@ -56,6 +57,14 @@ func (service *Auth) Auth(ctx context.Context, req AuthReq) (*AuthResp, error) {
 	return &AuthResp{
 		Code: orbital.OK,
 		User: user,
+	}, nil
+
+}
+
+func (service *Auth) Check(ctx context.Context, req CheckReq) (*CheckResp, error) {
+	// TODO :Check with database
+	return &CheckResp{
+		Code: orbital.OK,
 	}, nil
 
 }

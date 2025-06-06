@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"orbital/config"
@@ -35,23 +34,26 @@ func RegisterAuthServiceServer(server orbital.HTTPService, _ orbital.WsService, 
 		Handler:     handler.handleAuthentication,
 		Method:      http.MethodPost,
 	})
+
+	server.Register(orbital.Route{
+		ServiceName: "AuthService",
+		ActionName:  "Check",
+		Handler:     handler.handleCheckKey,
+		Method:      http.MethodPost,
+	})
 }
 
 func (s *authServiceServer) handleAuthentication(w http.ResponseWriter, r *http.Request) {
 
-	body, ok := r.Context().Value(proto.BodyCtxKey).([]byte)
+	publicKey, ok := r.Context().Value(proto.PublicKeyCtxKey).(string)
 	if !ok {
 		s.server.OnError(w, r, errors.New("cannot decode body"))
 		return
 	}
 
-	var req AuthReq
-	if err := json.Unmarshal(body, &req); err != nil {
-		s.server.OnError(w, r, err)
-		return
-	}
-
-	res, err := s.service.Auth(r.Context(), req)
+	res, err := s.service.Auth(r.Context(), AuthReq{
+		PublicKey: publicKey,
+	})
 	if err != nil {
 		s.server.OnError(w, r, err)
 		return
@@ -72,7 +74,44 @@ func (s *authServiceServer) handleAuthentication(w http.ResponseWriter, r *http.
 	orbitalMessage, _ := proto.Encode(sk, &cryptographer.Metadata{
 		Domain:        Domain,
 		Action:        ActionLogin,
-		CorrelationID: req.PublicKey,
+		CorrelationID: publicKey,
+	}, res)
+
+	if err = orbital.Encode(w, r, http.StatusOK, orbitalMessage); err != nil {
+		s.server.OnError(w, r, err)
+		return
+	}
+}
+
+func (s *authServiceServer) handleCheckKey(w http.ResponseWriter, r *http.Request) {
+	publicKey, ok := r.Context().Value(proto.PublicKeyCtxKey).(string)
+	if !ok {
+		s.server.OnError(w, r, errors.New("cannot decode body"))
+		return
+	}
+
+	res, err := s.service.Check(r.Context(), CheckReq{})
+	if err != nil {
+		s.server.OnError(w, r, err)
+		return
+	}
+
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		s.server.OnError(w, r, err)
+		return
+	}
+
+	sk, err := cryptographer.NewPrivateKeyFromString(cfg.SecretKey)
+	if err != nil {
+		s.server.OnError(w, r, err)
+		return
+	}
+
+	orbitalMessage, _ := proto.Encode(sk, &cryptographer.Metadata{
+		Domain:        Domain,
+		Action:        ActionCheck,
+		CorrelationID: publicKey,
 	}, res)
 
 	if err = orbital.Encode(w, r, http.StatusOK, orbitalMessage); err != nil {

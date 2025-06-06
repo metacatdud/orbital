@@ -16,6 +16,10 @@ type OverlayComponent struct {
 	*BaseComponent
 	child Component
 	state *state.State
+
+	titleText string
+	iconClass string
+	container js.Value
 }
 
 func NewOverlayComponent(di *orbital.Dependency) *OverlayComponent {
@@ -24,6 +28,28 @@ func NewOverlayComponent(di *orbital.Dependency) *OverlayComponent {
 		BaseComponent: base,
 		state:         di.State,
 	}
+
+	comp.OnMount(comp.onMountHandler)
+
+	di.State.Watch("state:overlay:currentChild", func(oldVal, newVal interface{}) {
+		if oldVal == nil {
+			return
+		}
+
+		if oldVal == newVal {
+			return
+		}
+
+		newKey, ok := newVal.(RegKey)
+		if !ok {
+			dom.ConsoleError("Overlay: state:overlay:currentChild changed to non-RegKey")
+			return
+		}
+
+		comp.swapChild(newKey)
+	})
+
+	comp.bindUIEvents()
 
 	return comp
 }
@@ -34,95 +60,49 @@ func (comp *OverlayComponent) ID() RegKey {
 
 func (comp *OverlayComponent) Mount(container *js.Value) error {
 
-	// Check state and set default
-	if rawState := comp.DI.State.Get("overlayChild"); rawState == nil {
-		comp.state.Set("overlayChild", LoginComponentRegKey)
+	if comp.onInit != nil {
+		comp.onInit()
 	}
 
-	childName := comp.state.Get("overlayChild").(RegKey)
+	raw := comp.state.Get("state:overlay:currentChild")
+	if raw == nil {
+		dom.ConsoleError("no child component set for overlay")
+		return comp.Unmount()
+	}
 
-	// Lookup new component
-	childComp, err := LookupComponent(childName, comp.DI)
+	key, _ := raw.(RegKey)
+	dom.ConsoleLog("overlay mount with child", key)
+
+	child, err := LookupComponent(key, comp.DI)
 	if err != nil {
-		return err
+		return fmt.Errorf("overlay: failed to lookup child %q: %w", key, err)
 	}
 
-	// See if metadata is provided
-	title, icon := "", ""
-	if mp, ok := childComp.(MetaProvider); ok {
-		title, icon = mp.Title(), mp.Icon()
+	comp.child = child
+
+	comp.titleText = ""
+	comp.iconClass = ""
+	if mp, ok := child.(MetaProvider); ok {
+		comp.titleText = mp.Title()
+		comp.iconClass = mp.Icon()
 	}
 
-	// Render overlay with data
-	html, err := comp.Render(map[string]interface{}{
-		"title": title,
-		"icon":  icon,
-	})
+	html, err := comp.Render(nil)
 	if err != nil {
-		dom.ConsoleError("cannot render overlay", err.Error())
 		return err
 	}
 
 	el := dom.CreateElementFromString(html)
-
 	dom.AppendChild(*container, el)
 
 	comp.element = &el
 	comp.RegisterContainers()
 
-	// Prepare and mount child
-	comp.child = childComp
-	overlayBody := comp.GetContainer("overlayBody")
-	if overlayBody.IsNull() {
-		return fmt.Errorf("dock area [overlayBody] not found")
+	comp.container = *container
+
+	if comp.onMount != nil {
+		comp.onMount()
 	}
-
-	comp.bindUIEvents()
-
-	if err = childComp.Mount(&overlayBody); err != nil {
-		return fmt.Errorf("cannot mount overlay component %s", childName)
-	}
-
-	comp.state.Set("state:overlay:toggle", true)
-
-	// TODO: Redo this as it turns very ugly
-	//comp.state.Watch("overlayChild", func(_, newValue any) {
-	//	newV := newValue.(RegKey)
-	//	dom.ConsoleLog("Change child", newV)
-	//
-	//	//// Unmount old child if any
-	//	//if comp.child != nil {
-	//	//	comp.child.Unmount()
-	//	//}
-	//	//
-	//	//// Lookup new component
-	//	//childComp, err = LookupComponent(newV, comp.DI)
-	//	//if err != nil {
-	//	//	dom.ConsoleError("cannot find overlay component", err.Error())
-	//	//	return
-	//	//}
-	//	//
-	//	//comp.child = childComp
-	//	//
-	//	//title, icon = "", ""
-	//	//if mp, ok := childComp.(MetaProvider); ok {
-	//	//	title, icon = mp.Title(), mp.Icon()
-	//	//}
-	//	//
-	//	//// Render overlay with data
-	//	//html, err = comp.Render(map[string]interface{}{
-	//	//	"title": title,
-	//	//	"icon":  icon,
-	//	//})
-	//	//if err != nil {
-	//	//	dom.ConsoleError("cannot render overlay", err.Error())
-	//	//	return
-	//	//}
-	//	//
-	//	//el := dom.CreateElementFromString(html)
-	//
-	//})
-
 	return nil
 }
 
@@ -135,8 +115,31 @@ func (comp *OverlayComponent) Unmount() error {
 	return comp.BaseComponent.Unmount()
 }
 
+func (comp *OverlayComponent) Render(_ map[string]interface{}) (string, error) {
+	return comp.BaseComponent.Render(map[string]interface{}{
+		"title": comp.titleText,
+		"icon":  comp.iconClass,
+	})
+}
+
+func (comp *OverlayComponent) onMountHandler() {
+
+	dom.ConsoleLog("overlay mount child", comp.child.ID())
+
+	container := comp.GetContainer("overlayBody")
+	if container.IsNull() {
+		dom.ConsoleError("overlayBody container not found")
+		return
+	}
+	if comp.child != nil {
+		comp.child.Mount(&container)
+	}
+
+	comp.state.Set("state:overlay:toggle", true)
+}
+
 func (comp *OverlayComponent) bindUIEvents() {
-	dom.AddEventListener(`[data-action="closeOverlay"]`, "click", comp.uiEventOverlayClose)
+	comp.AddEventHandler(`[data-action="closeOverlay"]`, "click", comp.uiEventOverlayClose)
 }
 
 func (comp *OverlayComponent) uiEventOverlayClose(_ js.Value, args []js.Value) interface{} {
@@ -144,4 +147,58 @@ func (comp *OverlayComponent) uiEventOverlayClose(_ js.Value, args []js.Value) i
 	return nil
 }
 
-//TODO: Make components report this in
+func (comp *OverlayComponent) swapChild(key RegKey) {
+
+	container := comp.container
+	if container.IsNull() {
+		dom.ConsoleError("cannot swapChild: container is null")
+		return
+	}
+
+	container.Set("innerHTML", "")
+	dom.RemoveElement(*comp.element)
+
+	if comp.child != nil {
+		comp.child.Unmount()
+	}
+
+	newChild, err := LookupComponent(key, comp.DI)
+	if err != nil {
+		dom.ConsoleError("overlay:swapChild", err.Error())
+		return
+	}
+	comp.child = newChild
+
+	comp.titleText = ""
+	comp.iconClass = ""
+	if mp, ok := newChild.(MetaProvider); ok {
+		comp.titleText = mp.Title()
+		comp.iconClass = mp.Icon()
+	}
+
+	html, err := comp.Render(nil)
+	if err != nil {
+		dom.ConsoleError("overlay update failed", err.Error())
+		return
+	}
+
+	el := dom.CreateElementFromString(html)
+
+	comp.element = &el
+	dom.AppendChild(container, el)
+
+	comp.RegisterContainers()
+	comp.bindUIEvents()
+
+	for _, ob := range comp.observers {
+		ob.OnParentRender()
+	}
+
+	body := comp.GetContainer("overlayBody")
+	if container.IsNull() {
+		dom.ConsoleError("overlayBody container not found")
+		return
+	}
+	newChild.Mount(&body)
+	comp.state.Set("state:overlay:toggle", true)
+}

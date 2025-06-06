@@ -80,19 +80,6 @@ func CreateElementFromString(htmlStr string) js.Value {
 	return container.Get("firstElementChild")
 }
 
-func extractTagName(s string) string {
-	s = strings.TrimSpace(s)
-	if !strings.HasPrefix(s, "<") {
-		return ""
-	}
-	s = s[1:]
-	end := strings.IndexAny(s, " >")
-	if end == -1 {
-		return ""
-	}
-	return s[:end]
-}
-
 func SetInnerHTML(element js.Value, html string) {
 	if element.Truthy() {
 		element.Set("innerHTML", html)
@@ -111,22 +98,20 @@ func RemoveElement(element js.Value) {
 	}
 }
 
-func AddEventListener(selector, event string, callback func(js.Value, []js.Value) interface{}) {
+func AddEventListener(selector, event string, callback js.Func) {
 	elem := QuerySelector(selector)
 	if elem.IsNull() {
 		return
 	}
-	handler := js.FuncOf(callback)
-	elem.Call("addEventListener", event, handler)
+	elem.Call("addEventListener", event, callback)
 }
 
-func RemoveEventListener(selector, event string, callback func(js.Value, []js.Value) interface{}) {
+func RemoveEventListener(selector, event string, callback js.Func) {
 	elem := QuerySelector(selector)
 	if elem.IsNull() {
 		return
 	}
-	handler := js.FuncOf(callback)
-	elem.Call("removeEventListener", event, handler)
+	elem.Call("removeEventListener", event, callback)
 }
 
 func AddClass(element js.Value, className string) {
@@ -204,4 +189,17 @@ func SetValue(attr, key, val string) {
 	default:
 		el.Set("textContent", val)
 	}
+}
+
+func extractTagName(s string) string {
+	s = strings.TrimSpace(s)
+	if !strings.HasPrefix(s, "<") {
+		return ""
+	}
+	s = s[1:]
+	end := strings.IndexAny(s, " >")
+	if end == -1 {
+		return ""
+	}
+	return s[:end]
 }

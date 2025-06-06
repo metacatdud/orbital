@@ -42,6 +42,10 @@ func (comp *LoginComponent) Title() string { return "Login" }
 
 func (comp *LoginComponent) Icon() string { return "fa-lock" }
 
+func (comp *LoginComponent) Unmount() error {
+	return comp.BaseComponent.Unmount()
+}
+
 func (comp *LoginComponent) renderError(errType, msg string) {
 	tpl, err := comp.DI.Templates.Get("auth/auth/errorMsg")
 	if err != nil {
@@ -80,6 +84,7 @@ func (comp *LoginComponent) clearError() {
 
 func (comp *LoginComponent) bindUIEvents() {
 	comp.AddEventHandler("[data-action='login']", "click", comp.uiEventLogin)
+	comp.AddEventHandler("[data-action='about']", "click", comp.uiEventAbout)
 }
 
 func (comp *LoginComponent) uiEventLogin(_ js.Value, args []js.Value) interface{} {
@@ -102,8 +107,14 @@ func (comp *LoginComponent) uiEventLogin(_ js.Value, args []js.Value) interface{
 		}
 
 		comp.clearError()
+		comp.DI.State.Set("state:isAuthenticated", true)
 
 		return
 	})
+	return nil
+}
+
+func (comp *LoginComponent) uiEventAbout(_ js.Value, args []js.Value) interface{} {
+	comp.DI.State.Set("state:overlay:currentChild", AboutComponentRegKey)
 	return nil
 }

@@ -7,10 +7,7 @@ import (
 
 type AuthService interface {
 	Auth(ctx context.Context, req AuthReq) (*AuthResp, error)
-}
-
-type AuthReq struct {
-	PublicKey string `json:"publicKey,omitempty"`
+	Check(ctx context.Context, req CheckReq) (*CheckResp, error)
 }
 
 type User struct {
@@ -20,8 +17,18 @@ type User struct {
 	Access    string `json:"access"`
 }
 
+type AuthReq struct {
+	PublicKey string `json:"publicKey,omitempty"`
+}
+
 type AuthResp struct {
 	User  *User                  `json:"user"`
+	Code  orbital.Code           `json:"code"`
+	Error *orbital.ErrorResponse `json:"error,omitempty"`
+}
+
+type CheckReq struct{}
+type CheckResp struct {
 	Code  orbital.Code           `json:"code"`
 	Error *orbital.ErrorResponse `json:"error,omitempty"`
 }

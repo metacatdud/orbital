@@ -39,7 +39,7 @@ func bootstrapApp(_ js.Value, _ []js.Value) interface{} {
 func ready(di *orbital.Dependency) {
 	dom.ConsoleLog("[orbital] Ready")
 
-	rootEl := dom.QuerySelector("#rootEl")
+	rootEl := dom.QuerySelector("#app-screen")
 	if rootEl.IsNull() {
 		dom.ConsoleError("Element rootEl doesn't exist")
 		return
@@ -47,8 +47,15 @@ func ready(di *orbital.Dependency) {
 
 	authSvc := service.NewAuthService(di)
 	if err := di.RegisterService(service.AuthServiceKey, authSvc); err != nil {
-		dom.ConsoleError("Cannot register auth service")
+		dom.ConsoleError("Cannot register service", service.AuthServiceKey)
 	}
+
+	appsSvc := service.NewAppsService(di)
+	if err := di.RegisterService(service.AppsServiceKey, appsSvc); err != nil {
+		dom.ConsoleError("Cannot register service", service.AppsServiceKey)
+	}
+
+	checkAuthStatus(di)
 
 	mainComp := components.NewMainComponent(di)
 	_ = mainComp.Mount(&rootEl)
@@ -70,4 +77,26 @@ func wsStatusCheck(ws *transport.WsConn, evt *events.Event) {
 			time.Sleep(interval)
 		}
 	})
+}
+
+func checkAuthStatus(di *orbital.Dependency) {
+	di.State.Set("state:isAuthenticated", false)
+	authSvc := orbital.MustGetService[*service.AuthService](di, service.AuthServiceKey)
+
+	var async transport.Async
+	async.Async(func() {
+		res, err := authSvc.CheckKey(service.CheckKeyReq{})
+		if err != nil {
+			di.State.Set("state:isAuthenticated", false)
+			return
+		}
+
+		if res.Code == transport.OK {
+			di.State.Set("state:isAuthenticated", true)
+			return
+		}
+
+		di.State.Set("state:isAuthenticated", false)
+	})
+	async.Wait()
 }

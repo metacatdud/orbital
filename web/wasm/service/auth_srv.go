@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"errors"
 	"orbital/pkg/cryptographer"
 	"orbital/pkg/proto"
 	"orbital/web/wasm/domain"
@@ -33,20 +34,10 @@ func (srv *AuthService) HookEvents(ev *events.Event) {
 	ev.On("auth:login", srv.Login)
 }
 
-type LoginReq struct {
-	SecretKey string `json:"secretKey"`
-}
-
 type User struct {
 	ID     string `json:"id"`
 	Name   string `json:"name"`
 	Access string `json:"access"`
-}
-
-type LoginRes struct {
-	Code  int                      `json:"code"`
-	User  *User                    `json:"user"`
-	Error *transport.ErrorResponse `json:"error,omitempty"`
 }
 
 func (srv *AuthService) Login(req LoginReq) (*LoginRes, error) {
@@ -108,3 +99,68 @@ func (srv *AuthService) Login(req LoginReq) (*LoginRes, error) {
 
 	return res, nil
 }
+
+type (
+	LoginReq struct {
+		SecretKey string `json:"secretKey"`
+	}
+
+	LoginRes struct {
+		Code  transport.Code           `json:"code"`
+		User  *User                    `json:"user"`
+		Error *transport.ErrorResponse `json:"error,omitempty"`
+	}
+)
+
+func (srv *AuthService) CheckKey(req CheckKeyReq) (*CheckKeyRes, error) {
+	authRepo := domain.NewAuthRepository(srv.di.Storage)
+	auth, err := authRepo.Get()
+	if err != nil {
+		if errors.Is(err, domain.ErrKeyNotFound) {
+			return &CheckKeyRes{Code: transport.Unauthenticated}, nil
+		}
+
+		return nil, err
+	}
+
+	sk, err := cryptographer.NewPrivateKeyFromString(auth.SecretKey)
+	if err != nil {
+		return &CheckKeyRes{Code: transport.Unauthenticated}, nil
+	}
+
+	api := transport.NewAPI("rpc/AuthService/Check")
+	api.WithMiddleware(transport.VerifyAndUnwrap)
+
+	msg, err := proto.Encode(sk, &cryptographer.Metadata{
+		Domain: "auth",
+		Action: "check",
+	}, nil)
+
+	raw, err := json.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+		res    *CheckKeyRes
+		rawRes []byte
+	)
+	rawRes, err = api.Do(raw, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = json.Unmarshal(rawRes, &res); err != nil {
+		return nil, err
+	}
+
+	return &CheckKeyRes{Code: res.Code}, nil
+}
+
+type (
+	CheckKeyReq struct{}
+	CheckKeyRes struct {
+		Code  transport.Code           `json:"code"`
+		Error *transport.ErrorResponse `json:"error,omitempty"`
+	}
+)
