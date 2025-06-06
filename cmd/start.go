@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/cobra"
 	"orbital/config"
 	"orbital/domain"
+	"orbital/internal/apps"
 	"orbital/internal/auth"
 	"orbital/internal/machine"
 	"orbital/orbital"
@@ -72,25 +73,30 @@ func setupAPIServer(cfg *config.Config) (*orbital.Server, *orbital.WsConn, error
 
 	userRepo := domain.NewUserRepository(dbClient)
 
-	// Prepare server
+	// Prepare servers
 	apiSrv := orbital.NewServer(log)
 	wsSrv := orbital.NewWsConn(log)
 
 	// Prepare services
-	authService := auth.NewService(auth.Dependencies{
+	authSvc := auth.NewService(auth.Dependencies{
 		Log:      log,
 		UserRepo: userRepo,
 		Ws:       wsSrv,
 	})
 
-	machineService := machine.NewService(machine.Dependencies{
+	appsSvc := apps.NewService(apps.Dependencies{
+		Log: log,
+	})
+
+	machineSvc := machine.NewService(machine.Dependencies{
 		Log: log,
 		Ws:  wsSrv,
 	})
 
 	// Register all service to server
-	auth.RegisterAuthServiceServer(apiSrv, wsSrv, authService)
-	machine.RegisterMachineServiceServer(apiSrv, wsSrv, machineService)
+	auth.RegisterAuthServiceServer(apiSrv, wsSrv, authSvc)
+	apps.RegisterAppsServiceServer(apiSrv, wsSrv, appsSvc)
+	machine.RegisterMachineServiceServer(apiSrv, wsSrv, machineSvc)
 
 	return apiSrv, wsSrv, nil
 }

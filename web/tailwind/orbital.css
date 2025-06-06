@@ -26,11 +26,11 @@
 }
 
 .orbital-icon {
+    @apply opacity-50;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cellipse cx='50' cy='50' rx='28' ry='25' fill='transparent' stroke='%23333' stroke-width='1.5'/%3E%3Cellipse cx='50' cy='50' rx='40' ry='10' fill='transparent' stroke='%23333' stroke-width='0.8' stroke-opacity='0.7' transform='rotate(-15 50 50)'/%3E%3Cpath d='M35,45 Q42,55 35,60 Q30,65 40,65' fill='transparent' stroke='%23333' stroke-width='0.8' stroke-opacity='0.7'/%3E%3Cpath d='M55,40 Q65,45 70,50 Q65,55 60,60' fill='transparent' stroke='%23333' stroke-width='0.8' stroke-opacity='0.7'/%3E%3Cellipse cx='20' cy='50' rx='9' ry='8' fill='transparent' stroke='%23333' stroke-width='1.5'/%3E%3Ccircle cx='17' cy='48' r='2' fill='transparent' stroke='%23333' stroke-width='0.7'/%3E%3Ccircle cx='23' cy='52' r='1.5' fill='transparent' stroke='%23333' stroke-width='0.7'/%3E%3Cellipse cx='20' cy='46' rx='1.5' ry='1' fill='transparent' stroke='%23333' stroke-width='0.7'/%3E%3Cellipse cx='50' cy='80' rx='11' ry='9' fill='transparent' stroke='%23333' stroke-width='1.5'/%3E%3Ccircle cx='46' cy='78' r='2' fill='transparent' stroke='%23333' stroke-width='0.7'/%3E%3Ccircle cx='53' cy='83' r='2.5' fill='transparent' stroke='%23333' stroke-width='0.7'/%3E%3Cellipse cx='50' cy='76' rx='1.5' ry='1' fill='transparent' stroke='%23333' stroke-width='0.7'/%3E%3Cpath d='M45,82 Q50,84 55,82' fill='transparent' stroke='%23333' stroke-width='0.7' stroke-opacity='0.8'/%3E%3C/svg%3E");
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
-
 }
 
 @layer utilities {
@@ -55,7 +55,7 @@ body {
     @apply font-mono bg-os-bg text-os-text dark:bg-terminal-bg dark:text-terminal-text min-h-screen transition-colors duration-200;
 }
 
-#rootEl {
+.app-widget {
     @apply w-full mx-auto;
 
     &.hide {
@@ -76,8 +76,8 @@ body {
     }
 }
 
-#loading {
-    @apply flex justify-center items-center h-screen px-6;
+.loading-widget {
+    @apply absolute inset-0 flex flex-col justify-center items-center;
 
     .spinner {
         animation: spin 2s linear infinite; /* Fallback animation */
@@ -85,7 +85,7 @@ body {
     }
 
     .loading-text {
-        @apply mt-4 text-gray-600 font-semibold;
+        @apply mt-4 text-os-text font-semibold;
     }
 
     &.hide {
@@ -95,10 +95,8 @@ body {
 
 
 #orbital {
-    @apply flex flex-col h-screen;
-
     [data-dock="application"] {
-        @apply flex-1;
+        @apply flex-1 p-6 relative bg-os-bg dark:bg-terminal-bg;
     }
 
     #overlayPlaceholder {
@@ -112,6 +110,24 @@ body {
     #taskbarPlaceholder {
         @apply z-[100];
     }
+}
+
+#application {
+    [data-item="loading"] {
+        &.hide {
+            @apply hidden;
+        }
+    }
+
+    [data-item="dashboard"] {
+        &.hide {
+            @apply hidden;
+        }
+    }
+}
+
+[data-item="dashboard"] {
+
 }
 
 #overlay {
@@ -165,6 +181,93 @@ body {
         }
 
     }
+}
+
+.app-group {
+    position: relative;
+}
+
+group-icon {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.group-icon::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 70%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.group-icon:hover::before {
+    opacity: 1;
+}
+
+group-icon-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.group-badge {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    color: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.mini-apps-indicator {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    display: flex;
+    gap: 1px;
+}
+
+.mini-app-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+}
+
+@keyframes panelFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+
+.app-group-panel {
+    transform-origin: top left;
+    animation: panelFadeIn 0.2s ease forwards;
+}
+
+.icon-app {
+    background: #e9ecef;
+    border: 1px solid rgba(26, 32, 44, 0.1);
+    box-shadow: 0 1px 2px rgba(26, 32, 44, 0.05);
 }
 
 .form-input {
@@ -231,6 +334,15 @@ body {
 
 /* Dark mode colors */
 .dark {
+    .icon-app {
+        background: rgba(15, 23, 42, 0.6);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), inset 0 0 0 1px rgba(42, 157, 143, 0.1);
+    }
+
+    .group-icon::before {
+        background: radial-gradient(circle at center, rgba(42, 157, 143, 0.1) 0%, rgba(42, 157, 143, 0) 70%);
+    }
+
     .form-input {
         background-color: rgba(30, 41, 59, 0.2);
         border-color: var(--terminal-border);
