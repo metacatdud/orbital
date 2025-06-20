@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	MaxRunInfinte = -1
+	MaxRunInfinite = -1
 )
 
 type Task func()
@@ -44,7 +44,7 @@ func (r *Runner) AddJob(interval time.Duration, maxRun int, task Task) string {
 	defer r.mu.Unlock()
 
 	if maxRun == 0 {
-		maxRun = MaxRunInfinte
+		maxRun = MaxRunInfinite
 	}
 
 	id := fmt.Sprintf("job-%d", atomic.AddUint64(&jobCounter, 1))
