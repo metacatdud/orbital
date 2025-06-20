@@ -31,16 +31,7 @@ func Random(n int, tokens ...StringToken) (string, error) {
 
 	if len(tokens) > 0 {
 		for _, t := range tokens {
-			switch t {
-			case RandLowercase:
-				charsetBuf.WriteString(RandLowercase.String())
-			case RandUppercase:
-				charsetBuf.WriteString(RandUppercase.String())
-			case RandNumber:
-				charsetBuf.WriteString(RandNumber.String())
-			case RandSym:
-				charsetBuf.WriteString(RandSym.String())
-			}
+			charsetBuf.WriteString(t.String())
 		}
 	}
 
