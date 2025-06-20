@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"orbital/pkg/cryptographer"
-	"orbital/pkg/proto"
 	"orbital/web/wasm/domain"
 	"orbital/web/wasm/orbital"
 	"orbital/web/wasm/pkg/transport"
@@ -54,7 +53,7 @@ func (srv *AppsService) List(req ListReq) (*ListRes, error) {
 	api := transport.NewAPI("rpc/AppsService/List")
 	api.WithMiddleware(transport.VerifyAndUnwrap)
 
-	msg, err := proto.Encode(sk, &cryptographer.Metadata{
+	msg, err := cryptographer.Encode(sk, &cryptographer.Metadata{
 		Domain: "apps",
 		Action: "list",
 	}, req)

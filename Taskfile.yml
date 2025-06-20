@@ -51,13 +51,6 @@ tasks:
           exit 1;
         }
       - echo "- NPM is installed."
-      - |
-        command -v brotli >/dev/null || { 
-          echo "ERROR: Brotli compressor is not installed.";
-          echo "Please install brotli (e.g., on Ubuntu: sudo apt-get install brotli) and ensure your PATH includes the brotli binary.";
-          exit 1;
-        }
-      - echo "- Brotli is installed"
       - echo "All required software is installed!"
 
   build:wasm:
@@ -81,14 +74,6 @@ tasks:
     cmds:
       - task: build:css
       - task: build:wasm
-
-  wasm:prod:
-    silent: true
-    cmds:
-      - task: wasm
-      - |
-        echo "- Compress with brotli. Level: 11"
-      - brotli -f -q 11 -o orbital/web/orbital.wasm.br orbital/web/orbital.wasm
 
   orbital:linux:
     desc: Build Orbital for Linux

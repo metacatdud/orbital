@@ -6,7 +6,6 @@ import (
 	"orbital/config"
 	"orbital/orbital"
 	"orbital/pkg/cryptographer"
-	"orbital/pkg/proto"
 )
 
 type authServiceServer struct {
@@ -45,7 +44,7 @@ func RegisterAuthServiceServer(server orbital.HTTPService, _ orbital.WsService, 
 
 func (s *authServiceServer) handleAuthentication(w http.ResponseWriter, r *http.Request) {
 
-	publicKey, ok := r.Context().Value(proto.PublicKeyCtxKey).(string)
+	publicKey, ok := r.Context().Value(cryptographer.PublicKeyCtxKey).(string)
 	if !ok {
 		s.server.OnError(w, r, errors.New("cannot decode body"))
 		return
@@ -71,7 +70,7 @@ func (s *authServiceServer) handleAuthentication(w http.ResponseWriter, r *http.
 		return
 	}
 
-	orbitalMessage, _ := proto.Encode(sk, &cryptographer.Metadata{
+	orbitalMessage, _ := cryptographer.Encode(sk, &cryptographer.Metadata{
 		Domain:        Domain,
 		Action:        ActionLogin,
 		CorrelationID: publicKey,
@@ -84,7 +83,7 @@ func (s *authServiceServer) handleAuthentication(w http.ResponseWriter, r *http.
 }
 
 func (s *authServiceServer) handleCheckKey(w http.ResponseWriter, r *http.Request) {
-	publicKey, ok := r.Context().Value(proto.PublicKeyCtxKey).(string)
+	publicKey, ok := r.Context().Value(cryptographer.PublicKeyCtxKey).(string)
 	if !ok {
 		s.server.OnError(w, r, errors.New("cannot decode body"))
 		return
@@ -108,7 +107,7 @@ func (s *authServiceServer) handleCheckKey(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	orbitalMessage, _ := proto.Encode(sk, &cryptographer.Metadata{
+	orbitalMessage, _ := cryptographer.Encode(sk, &cryptographer.Metadata{
 		Domain:        Domain,
 		Action:        ActionCheck,
 		CorrelationID: publicKey,

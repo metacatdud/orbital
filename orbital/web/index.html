@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Orbital</title>
-<!--    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />-->
+    <link rel="stylesheet" href="fontawesome.min.css" />
     <link rel="stylesheet" href="orbital.css">
 </head>
 
@@ -20,53 +20,22 @@
 
 <script src="wasm_exec.js"></script>
 <script type="module">
-    // const brotli = await import("https://unpkg.com/brotli-wasm@3.0.1/index.web.js?module")
-    //     .then(m => m.default);
-    const brotli = null
     const go = new Go();
 
     async function loadOrbital() {
-        let wasmRes
-        let isCompressed = true
-
-        // Try getting the compressed version first
-        // if not available fallback to normal wasm file
-        try {
-            wasmRes = await fetch('orbital.wasm.br')
-            if (!wasmRes.ok) {
-                throw new Error(`[orbital] Failed to load orbital.wasm.br`);
-            }
-
-            console.log('[orbital] Using compressed version')
-        } catch (err) {
-            console.warn('[orbital] Compressed not found. Fallback to orbital.wasm', err)
-
-            isCompressed = false
-            wasmRes = await fetch('orbital.wasm')
-            if (!wasmRes.ok) {
-                throw new Error(`[orbital] Failed to load orbital.wasm`)
-            }
-
-            console.log('[orbital] Using uncompressed version')
+        const wasmRes = await fetch('orbital.wasm')
+        if (!wasmRes.ok) {
+            throw new Error(`[orbital] Failed to load orbital.wasm`)
         }
 
-
         let orbitalInstance
-        if (isCompressed) {
-            const buf = await wasmRes.arrayBuffer()
-            const wasmBytes = brotli.decompress(new Uint8Array(buf))
-
-            const {instance} = await WebAssembly.instantiate(wasmBytes, go.importObject)
+        try {
+            const {instance} = await WebAssembly.instantiate(wasmRes, go.importObject)
             orbitalInstance = instance
-        } else {
-            try {
-                const {instance} = await WebAssembly.instantiate(wasmRes, go.importObject)
-                orbitalInstance = instance
-            } catch (err) {
-                const buf = await wasmRes.arrayBuffer()
-                const {instance} = await WebAssembly.instantiate(new Uint8Array(buf), go.importObject)
-                orbitalInstance = instance
-            }
+        } catch (err) {
+            const buf = await wasmRes.arrayBuffer()
+            const {instance} = await WebAssembly.instantiate(new Uint8Array(buf), go.importObject)
+            orbitalInstance = instance
         }
 
         // Run the WASM

@@ -7,8 +7,6 @@ import (
 	"orbital/pkg/cryptographer"
 	"orbital/pkg/jobber"
 	"orbital/pkg/logger"
-	"orbital/pkg/proto"
-	"time"
 )
 
 type Dependencies struct {
@@ -29,9 +27,9 @@ func NewService(deps Dependencies) *Machine {
 		ws:  deps.Ws,
 	}
 
-	m.jr.AddJob(10*time.Second, jobber.MaxRunInfinte, func() {
-		_ = m.JobAllData(context.Background(), AllDataReq{})
-	})
+	//m.jr.AddJob(10*time.Second, jobber.MaxRunInfinite, func() {
+	//	_ = m.JobAllData(context.Background(), AllDataReq{})
+	//})
 
 	return m
 }
@@ -63,7 +61,7 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 			Msg:  err.Error(),
 		}
 
-		msg, _ := proto.Encode(sk, meta, body)
+		msg, _ := cryptographer.Encode(sk, meta, body)
 		service.ws.Broadcast(*msg)
 	}
 
@@ -75,7 +73,7 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 			Msg:  err.Error(),
 		}
 
-		msg, _ := proto.Encode(sk, meta, body)
+		msg, _ := cryptographer.Encode(sk, meta, body)
 		service.ws.Broadcast(*msg)
 	}
 
@@ -86,7 +84,7 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 			Type: "machine.stats.err",
 			Msg:  err.Error(),
 		}
-		msg, _ := proto.Encode(sk, meta, body)
+		msg, _ := cryptographer.Encode(sk, meta, body)
 		service.ws.Broadcast(*msg)
 	}
 
@@ -98,7 +96,7 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 			Msg:  err.Error(),
 		}
 
-		msg, _ := proto.Encode(sk, meta, body)
+		msg, _ := cryptographer.Encode(sk, meta, body)
 		service.ws.Broadcast(*msg)
 	}
 
@@ -109,7 +107,7 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 			Type: "machine.stats.err",
 			Msg:  err.Error(),
 		}
-		msg, _ := proto.Encode(sk, meta, body)
+		msg, _ := cryptographer.Encode(sk, meta, body)
 		service.ws.Broadcast(*msg)
 	}
 
@@ -124,7 +122,7 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 	body.Code = orbital.OK
 	body.SystemInfo = stats
 
-	msg, _ := proto.Encode(sk, meta, body)
+	msg, _ := cryptographer.Encode(sk, meta, body)
 	service.ws.Broadcast(*msg)
 
 	return nil

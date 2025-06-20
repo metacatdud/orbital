@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"orbital/pkg/proto"
+	"orbital/pkg/cryptographer"
 )
 
 func VerifyAndUnwrap(raw []byte) ([]byte, error) {
-	var msg proto.Message
+	var msg cryptographer.Message
 	if err := json.Unmarshal(raw, &msg); err != nil {
 		return nil, fmt.Errorf("invalid envelope JSON: %w", err)
 	}
