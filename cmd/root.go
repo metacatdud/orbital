@@ -19,6 +19,7 @@ var rootCmd = &cobra.Command{
 
 func Execute(deps Dependencies) error {
 	rootCmd.AddCommand(newInitCmd(deps))
+	rootCmd.AddCommand(newUpdateCmd(deps))
 	rootCmd.AddCommand(newKeygenCmd())
 	rootCmd.AddCommand(newStartCmd())
 

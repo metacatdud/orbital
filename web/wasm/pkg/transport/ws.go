@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"orbital/pkg/proto"
+	"orbital/pkg/cryptographer"
 	"orbital/web/wasm/pkg/dom"
 	"syscall/js"
 	"time"
@@ -46,7 +46,7 @@ func (ws *WsConn) IsOpen() bool {
 	return ws.isOpen
 }
 
-func (ws *WsConn) Send(msg proto.Message) {
+func (ws *WsConn) Send(msg cryptographer.Message) {
 	if !ws.isOpen {
 		dom.ConsoleWarn("WebSocket closed")
 		return
@@ -156,7 +156,7 @@ func (ws *WsConn) handleTextMessage(dataVal js.Value) {
 
 func (ws *WsConn) routeMessage(raw []byte) {
 
-	var msg *proto.Message
+	var msg cryptographer.Message
 	if err := json.Unmarshal(raw, &msg); err != nil {
 		dom.ConsoleLog("[routeMessage] not valid JSON")
 		return
