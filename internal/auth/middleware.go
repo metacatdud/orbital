@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"net/http"
 	"orbital/orbital"
-	"orbital/pkg/proto"
+	"orbital/pkg/cryptographer"
 )
 
 func MessageDecode() orbital.Middleware {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			var msg *proto.Message
+			var msg cryptographer.Message
 			if err := json.NewDecoder(r.Body).Decode(&msg); err != nil {
 				http.Error(w, "bad JSON envelope", 400)
 				return
@@ -30,8 +30,8 @@ func MessageDecode() orbital.Middleware {
 			}
 
 			ctx := r.Context()
-			ctx = context.WithValue(ctx, proto.BodyCtxKey, msg.Body)
-			ctx = context.WithValue(ctx, proto.PublicKeyCtxKey, hex.EncodeToString(msg.PublicKey[:]))
+			ctx = context.WithValue(ctx, cryptographer.BodyCtxKey, msg.Body)
+			ctx = context.WithValue(ctx, cryptographer.PublicKeyCtxKey, hex.EncodeToString(msg.PublicKey[:]))
 
 			next(w, r.WithContext(ctx))
 		}

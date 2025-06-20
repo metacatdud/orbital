@@ -63,7 +63,7 @@ func newStartCmd() *cobra.Command {
 func setupAPIServer(cfg *config.Config) (*orbital.Server, *orbital.WsConn, error) {
 	dbPath := filepath.Join(cfg.OrbitalRootDir(), "data")
 
-	dbClient, err := db.NewDB(dbPath)
+	dbConn, err := db.NewDB(dbPath)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -71,7 +71,8 @@ func setupAPIServer(cfg *config.Config) (*orbital.Server, *orbital.WsConn, error
 	// Dependencies and repositories
 	log := logger.New(logger.LevelDebug, logger.FormatString)
 
-	userRepo := domain.NewUserRepository(dbClient)
+	appRepo := domain.NewAppRepository(dbConn)
+	userRepo := domain.NewUserRepository(dbConn)
 
 	// Prepare servers
 	apiSrv := orbital.NewServer(log)
@@ -80,12 +81,13 @@ func setupAPIServer(cfg *config.Config) (*orbital.Server, *orbital.WsConn, error
 	// Prepare services
 	authSvc := auth.NewService(auth.Dependencies{
 		Log:      log,
-		UserRepo: userRepo,
+		UserRepo: &userRepo,
 		Ws:       wsSrv,
 	})
 
 	appsSvc := apps.NewService(apps.Dependencies{
-		Log: log,
+		Log:     log,
+		AppRepo: &appRepo,
 	})
 
 	machineSvc := machine.NewService(machine.Dependencies{

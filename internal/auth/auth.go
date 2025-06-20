@@ -15,14 +15,14 @@ const (
 
 type Dependencies struct {
 	Log      *logger.Logger
-	UserRepo domain.UserRepository
+	UserRepo *domain.UserRepository
 	Ws       *orbital.WsConn
 }
 
 type Auth struct {
 	log *logger.Logger
 
-	userRepo domain.UserRepository
+	userRepo *domain.UserRepository
 	ws       *orbital.WsConn
 }
 
@@ -36,7 +36,7 @@ func NewService(deps Dependencies) *Auth {
 
 func (service *Auth) Auth(ctx context.Context, req AuthReq) (*AuthResp, error) {
 
-	userRepo, err := service.userRepo.FindByPublicKey(req.PublicKey)
+	userRepo, err := service.userRepo.GetByPublicKey(req.PublicKey)
 	if err != nil {
 		return &AuthResp{
 			Code: orbital.NotFound,

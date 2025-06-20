@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 )
@@ -11,6 +12,13 @@ import (
 const (
 	// Payload cannot exceed 50MB
 	maxSize = 50267340
+)
+
+type CtxKey string
+
+const (
+	BodyCtxKey      CtxKey = "body"
+	PublicKeyCtxKey CtxKey = "publicKey"
 )
 
 const (
@@ -124,4 +132,33 @@ func (m *Message) Verify() (bool, error) {
 	hash := sha256.Sum256(serial)
 
 	return ed25519.Verify(m.PublicKey[:], hash[:], m.Signature[:]), nil
+}
+
+func Encode(sk *PrivateKey, metadata *Metadata, body any) (*Message, error) {
+	pubK := sk.PublicKey()
+	var (
+		b []byte
+	)
+
+	if body != nil {
+		b, _ = json.Marshal(body)
+	}
+
+	if metadata == nil {
+		metadata = &Metadata{}
+	}
+
+	msg := &Message{
+		PublicKey: pubK.Compress(),
+		V:         1,
+		Timestamp: Now(),
+		Metadata:  metadata,
+		Body:      b,
+	}
+
+	if err := msg.Sign(sk.Bytes()); err != nil {
+		return nil, errors.New("sign msg fail")
+	}
+
+	return msg, nil
 }

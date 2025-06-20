@@ -1,13 +1,10 @@
 package cryptographer
 
 import (
-	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
-	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"strings"
 )
 
 type PublicKey struct {
@@ -23,19 +20,6 @@ func (pk *PublicKey) Compress() [32]byte {
 
 func (pk *PublicKey) String() string {
 	return hex.EncodeToString(pk.key[:])
-}
-
-func (pk *PublicKey) ToSSH() string {
-	const sshHeader = "ssh-ed25519"
-
-	buf := new(bytes.Buffer)
-	writeBytesToBuffer(buf, []byte(sshHeader))
-	writeBytesToBuffer(buf, pk.key[:])
-
-	return strings.Join([]string{
-		sshHeader,
-		base64.StdEncoding.EncodeToString(buf.Bytes()),
-	}, " ")
 }
 
 func NewPublicKeyFromString(publicKeyHex string) (*PublicKey, error) {

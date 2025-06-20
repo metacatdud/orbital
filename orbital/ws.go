@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"orbital/pkg/cryptographer"
 	"orbital/pkg/logger"
-	"orbital/pkg/proto"
 	"time"
 )
 
@@ -19,11 +18,11 @@ type (
 		Name    string
 		Handler HandlerFunc
 	}
-	
+
 	WsService interface {
 		Register(topic Topic)
-		Broadcast(m proto.Message)
-		SendTo(connectionID string, m proto.Message) error
+		Broadcast(m cryptographer.Message)
+		SendTo(connectionID string, m cryptographer.Message) error
 	}
 
 	WsConn struct {
@@ -65,7 +64,7 @@ func (ws *WsConn) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ws.handleConnection(wsConn)
 }
 
-func (ws *WsConn) Broadcast(m proto.Message) {
+func (ws *WsConn) Broadcast(m cryptographer.Message) {
 
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
@@ -80,7 +79,7 @@ func (ws *WsConn) Broadcast(m proto.Message) {
 	ws.connectionManager.Broadcast(ctx, raw)
 }
 
-func (ws *WsConn) SendTo(connectionID string, m proto.Message) error {
+func (ws *WsConn) SendTo(connectionID string, m cryptographer.Message) error {
 
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
@@ -114,7 +113,7 @@ func (ws *WsConn) handleConnection(conn *websocket.Conn) {
 			return
 		}
 
-		var message proto.Message
+		var message cryptographer.Message
 		if err = json.Unmarshal(msg, &message); err != nil {
 			ws.log.Error(err.Error(), "connection", "unmarshal error", "resolution", "skip message")
 			continue

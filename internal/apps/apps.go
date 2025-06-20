@@ -2,6 +2,7 @@ package apps
 
 import (
 	"context"
+	"orbital/domain"
 	"orbital/orbital"
 	"orbital/pkg/logger"
 )
@@ -12,45 +13,47 @@ const (
 )
 
 type Dependencies struct {
-	Log *logger.Logger
+	Log     *logger.Logger
+	AppRepo *domain.AppRepository
 }
 
 type Apps struct {
-	log *logger.Logger
+	log     *logger.Logger
+	appRepo *domain.AppRepository
 }
 
 func NewService(deps Dependencies) *Apps {
 	return &Apps{
-		log: deps.Log,
+		log:     deps.Log,
+		appRepo: deps.AppRepo,
 	}
 }
 
-func (a *Apps) List(ctx context.Context, req ListReq) (*ListResp, error) {
+func (service *Apps) List(_ context.Context, _ ListReq) (*ListResp, error) {
 
-	// These should come from DB
-	dummyApps := []App{
-		{
-			Name:        "Dummy App 1",
-			Icon:        "fa-brands fa-medapps",
-			Version:     "1.0.0",
-			Description: "This is my first app",
-		},
-		{
-			Name:        "Notes",
-			Icon:        "fa-note-sticky",
-			Version:     "1.1.0",
-			Description: "Notes to read never",
-		},
-		{
-			Name:        "System",
-			Icon:        "fa-gear",
-			Version:     "2.0.10",
-			Description: "Orbital settings",
-		},
+	var (
+		dbApps domain.Apps
+		err    error
+	)
+
+	dbApps, err = service.appRepo.Find()
+	if err != nil {
+		return nil, err
+	}
+
+	var apps []App
+	for _, dbApp := range dbApps {
+		apps = append(apps, App{
+			Name:        dbApp.Name,
+			Icon:        dbApp.Icon,
+			Version:     dbApp.Version,
+			Description: dbApp.Description,
+			Apps:        nil,
+		})
 	}
 
 	return &ListResp{
 		Code: orbital.Unimplemented,
-		Apps: dummyApps,
+		Apps: apps,
 	}, nil
 }

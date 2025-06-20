@@ -9,11 +9,14 @@ type AppsService interface {
 	List(ctx context.Context, req ListReq) (*ListResp, error)
 }
 
+// App struct holder for apps
+// TODO: This needs extra properties
 type App struct {
 	Name        string `json:"name"`
 	Icon        string `json:"icon"`
 	Version     string `json:"version"`
 	Description string `json:"description"`
+	Apps        []App  `json:"apps"` // If an app it's a suite of apps (just a group basically)
 }
 
 type ListReq struct{}

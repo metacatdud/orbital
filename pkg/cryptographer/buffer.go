@@ -7,12 +7,6 @@ import (
 	"math"
 )
 
-// writeBytesToBuffer writes length-prefixed bytes to the buffer.
-func writeBytesToBuffer(buf *bytes.Buffer, b []byte) {
-	_ = binary.Write(buf, binary.BigEndian, uint32(len(b)))
-	buf.Write(b)
-}
-
 func writeTLVtoBuffer(buf *bytes.Buffer, fieldType byte, data []byte) error {
 	// Write Type
 	if err := buf.WriteByte(fieldType); err != nil {

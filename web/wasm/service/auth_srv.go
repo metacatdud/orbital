@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"orbital/pkg/cryptographer"
-	"orbital/pkg/proto"
 	"orbital/web/wasm/domain"
 	"orbital/web/wasm/orbital"
 	"orbital/web/wasm/pkg/events"
@@ -50,7 +49,7 @@ func (srv *AuthService) Login(req LoginReq) (*LoginRes, error) {
 		return nil, err
 	}
 
-	msg, err := proto.Encode(sk, &cryptographer.Metadata{
+	msg, err := cryptographer.Encode(sk, &cryptographer.Metadata{
 		Domain: "auth",
 		Action: "login",
 	}, map[string]any{
@@ -131,7 +130,7 @@ func (srv *AuthService) CheckKey(req CheckKeyReq) (*CheckKeyRes, error) {
 	api := transport.NewAPI("rpc/AuthService/Check")
 	api.WithMiddleware(transport.VerifyAndUnwrap)
 
-	msg, err := proto.Encode(sk, &cryptographer.Metadata{
+	msg, err := cryptographer.Encode(sk, &cryptographer.Metadata{
 		Domain: "auth",
 		Action: "check",
 	}, nil)

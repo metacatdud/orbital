@@ -7,7 +7,6 @@ import (
 	"orbital/config"
 	"orbital/orbital"
 	"orbital/pkg/cryptographer"
-	"orbital/pkg/proto"
 )
 
 type appsServiceServer struct {
@@ -30,7 +29,7 @@ func RegisterAppsServiceServer(server orbital.HTTPService, _ orbital.WsService, 
 }
 
 func (s *appsServiceServer) handleList(w http.ResponseWriter, r *http.Request) {
-	body, ok := r.Context().Value(proto.BodyCtxKey).([]byte)
+	body, ok := r.Context().Value(cryptographer.BodyCtxKey).([]byte)
 	if !ok {
 		s.server.OnError(w, r, errors.New("cannot decode body"))
 		return
@@ -60,7 +59,7 @@ func (s *appsServiceServer) handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	orbitalMessage, _ := proto.Encode(sk, &cryptographer.Metadata{
+	orbitalMessage, _ := cryptographer.Encode(sk, &cryptographer.Metadata{
 		Domain: Domain,
 		Action: ActionList,
 		Tags:   nil,
