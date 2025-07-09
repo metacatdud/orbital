@@ -71,7 +71,6 @@ func (comp *BaseComponent) AddEventHandler(sel, evt string, cb func(js.Value, []
 }
 
 func (comp *BaseComponent) RemoveAllEventHandlers() {
-	dom.ConsoleLog("Uninstalling all event handlers", comp.ID())
 	for _, uh := range comp.uiEventHandlers {
 		el := dom.QuerySelector(uh.selector)
 		if !el.IsNull() {
@@ -107,8 +106,8 @@ func (comp *BaseComponent) RemoveEventHandler(sel, evt string) int {
 	return removed
 }
 
-func (comp *BaseComponent) Watch(key string, cb func(oldV, newV interface{})) {
-	unwatchFn := comp.DI.State.Watch(key, func(oldValue, newValue interface{}) {
+func (comp *BaseComponent) Watch(key string, cb func(oldV, newV any)) {
+	unwatchFn := comp.DI.State.Watch(key, func(oldValue, newValue any) {
 		comp.update()
 
 		if comp.onUpdate != nil {
@@ -245,16 +244,13 @@ func (comp *BaseComponent) update() {
 		return
 	}
 
-	parent.Call("replaceChild", newEl, comp.element)
+	parent.Call("replaceChild", newEl, *comp.element)
 
 	comp.element = &newEl
 	comp.RegisterContainers()
 
-	for _, uh := range comp.uiEventHandlers {
-		el := dom.QuerySelector(uh.selector)
-		if !el.IsNull() {
-			el.Call("addEventListener", uh.event, uh.cb)
-		}
+	for _, uiEvt := range comp.uiEventHandlers {
+		dom.AddEventListener(uiEvt.selector, uiEvt.event, uiEvt.cb)
 	}
 
 	for _, ob := range comp.observers {

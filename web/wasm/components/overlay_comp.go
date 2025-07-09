@@ -31,7 +31,7 @@ func NewOverlayComponent(di *orbital.Dependency) *OverlayComponent {
 
 	comp.OnMount(comp.onMountHandler)
 
-	di.State.Watch("state:overlay:currentChild", func(oldVal, newVal interface{}) {
+	comp.state.Watch("state:overlay:currentChild", func(oldVal, newVal interface{}) {
 		if oldVal == nil {
 			return
 		}
@@ -45,6 +45,8 @@ func NewOverlayComponent(di *orbital.Dependency) *OverlayComponent {
 			dom.ConsoleError("Overlay: state:overlay:currentChild changed to non-RegKey")
 			return
 		}
+
+		dom.ConsoleLog("Overlay: currentChild changed to", newKey)
 
 		comp.swapChild(newKey)
 	})
@@ -71,7 +73,6 @@ func (comp *OverlayComponent) Mount(container *js.Value) error {
 	}
 
 	key, _ := raw.(RegKey)
-	dom.ConsoleLog("overlay mount with child", key)
 
 	child, err := LookupComponent(key, comp.DI)
 	if err != nil {
@@ -103,6 +104,7 @@ func (comp *OverlayComponent) Mount(container *js.Value) error {
 	if comp.onMount != nil {
 		comp.onMount()
 	}
+
 	return nil
 }
 
@@ -167,6 +169,7 @@ func (comp *OverlayComponent) swapChild(key RegKey) {
 		dom.ConsoleError("overlay:swapChild", err.Error())
 		return
 	}
+
 	comp.child = newChild
 
 	comp.titleText = ""

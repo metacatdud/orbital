@@ -3,6 +3,7 @@ package components
 import (
 	"fmt"
 	"orbital/web/wasm/orbital"
+	"strings"
 )
 
 // init add components to registry here for later use.
@@ -20,6 +21,13 @@ type RegKey string
 
 func (key RegKey) String() string {
 	return string(key)
+}
+
+func (key RegKey) WithExtra(sep string, parts ...any) RegKey {
+	joined := fmt.Sprint(parts...)
+	result := fmt.Sprintf("%s%s%s", key, sep, joined)
+	result = strings.ReplaceAll(result, " ", "")
+	return RegKey(result)
 }
 
 var registry = map[RegKey]func(di *orbital.Dependency) Component{}
