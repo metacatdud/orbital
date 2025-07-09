@@ -1,11 +1,11 @@
 package components
 
 import (
+	"fmt"
 	"orbital/web/wasm/orbital"
 	"orbital/web/wasm/pkg/dom"
 	"orbital/web/wasm/pkg/state"
-	"orbital/web/wasm/pkg/transport"
-	"orbital/web/wasm/service"
+	"syscall/js"
 )
 
 const (
@@ -14,31 +14,32 @@ const (
 
 type DashboardComponent struct {
 	*BaseComponent
-	state *state.State
-
-	appsSvc *service.AppsService
+	state   *state.State
+	appList Component
 }
 
 func NewDashboardComponent(di *orbital.Dependency) *DashboardComponent {
 	base := NewBaseComponent(di, DashboardComponentRegKey, "dashboard/main/default")
 
-	appsSvc := orbital.MustGetService[*service.AppsService](di, service.AppsServiceKey)
+	// Child components
+	appList := NewAppsListComponent(di)
 
 	comp := &DashboardComponent{
 		BaseComponent: base,
 		state:         di.State,
-		appsSvc:       appsSvc,
+		appList:       appList,
 	}
 
-	comp.OnMount(func() {
+	comp.state.Set("state:dashboard:ready", false)
+
+	base.OnMount(func() {
 		comp.toggle("loading")
-
-		comp.state.Set("state:dashboard:ready", true)
-
 	})
 
 	comp.state.Watch("state:dashboard:ready", func(oldV, newV interface{}) {
-		comp.loadApps()
+		if newV.(bool) {
+			comp.toggle("dashboard")
+		}
 	})
 
 	return comp
@@ -48,18 +49,37 @@ func (comp *DashboardComponent) ID() RegKey {
 	return DashboardComponentRegKey
 }
 
-func (comp *DashboardComponent) loadApps() {
-	var async transport.Async
-	async.Async(func() {
-		res, err := comp.appsSvc.List(service.ListReq{})
-		if err != nil {
-			dom.ConsoleError(err)
-			return
-		}
+func (comp *DashboardComponent) Mount(container *js.Value) error {
+	if !container.Truthy() {
+		return fmt.Errorf("dashboard component does not mount")
+	}
 
-		dom.ConsoleLog("APP", res.Apps)
-		comp.toggle("dashboard")
-	})
+	if err := comp.BaseComponent.Mount(container); err != nil {
+		return err
+	}
+
+	comp.mountAppList()
+	return nil
+}
+
+func (comp *DashboardComponent) Unmount() error {
+	comp.appList.Unmount()
+	return comp.BaseComponent.Unmount()
+}
+
+func (comp *DashboardComponent) mountAppList() {
+	container := comp.GetContainer("appList")
+	if container.IsNull() {
+		dom.ConsoleError("dashboard component container is null", comp.ID())
+		return
+	}
+
+	dom.SetInnerHTML(container, "")
+
+	if err := comp.appList.Mount(&container); err != nil {
+		dom.ConsoleError("dashboard component cannot be mounted", err.Error(), comp.ID())
+		return
+	}
 }
 
 func (comp *DashboardComponent) toggle(screen string) {

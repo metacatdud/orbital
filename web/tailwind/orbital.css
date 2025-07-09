@@ -95,7 +95,7 @@ body {
 
 
 #orbital {
-    [data-dock="application"] {
+    [data-dock="dashboard"] {
         @apply flex-1 p-6 relative bg-os-bg dark:bg-terminal-bg;
     }
 
@@ -112,7 +112,7 @@ body {
     }
 }
 
-#application {
+#dashboard {
     [data-item="loading"] {
         &.hide {
             @apply hidden;
@@ -124,10 +124,6 @@ body {
             @apply hidden;
         }
     }
-}
-
-[data-item="dashboard"] {
-
 }
 
 #overlay {

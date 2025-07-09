@@ -100,7 +100,7 @@ func (comp *MainComponent) mountDashboard(shouldInit bool) {
 		return
 	}
 
-	container := comp.GetContainer("application")
+	container := comp.GetContainer("dashboard")
 	if container.IsNull() {
 		dom.ConsoleError("overlay component container is null", comp.ID())
 		return
@@ -115,9 +115,9 @@ func (comp *MainComponent) mountDashboard(shouldInit bool) {
 }
 
 func (comp *MainComponent) toggleDashboard(show bool) {
-	container := comp.GetContainer("application")
+	container := comp.GetContainer("dashboard")
 	if container.IsNull() {
-		dom.ConsoleError("application component container is null", comp.ID())
+		dom.ConsoleError("dashboard component container is null", comp.ID())
 		return
 	}
 

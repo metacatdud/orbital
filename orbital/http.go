@@ -106,13 +106,11 @@ func Decode(r io.ReadCloser, data any) error {
 // Encode outgoing http response
 func Encode(w http.ResponseWriter, r *http.Request, status int, data any) error {
 	var writer io.Writer = w
+	useGzip := strings.Contains(r.Header.Get("Accept-Encoding"), "gzip")
 
-	b, err := json.Marshal(data)
-	if err != nil {
-		return err
-	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
-	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+	if useGzip {
 		w.Header().Set("Content-Encoding", "gzip")
 		gzw := gzip.NewWriter(w)
 		writer = gzw
@@ -121,14 +119,11 @@ func Encode(w http.ResponseWriter, r *http.Request, status int, data any) error 
 		}(gzw)
 	}
 
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 
-	if _, err = writer.Write(b); err != nil {
-		return err
-	}
-
-	return nil
+	enc := json.NewEncoder(writer)
+	enc.SetEscapeHTML(false)
+	return enc.Encode(data)
 }
 
 func onErrorHandler(w http.ResponseWriter, r *http.Request, err error) {

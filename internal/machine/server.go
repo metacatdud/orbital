@@ -13,4 +13,8 @@ func RegisterMachineServiceServer(server orbital.HTTPService, wsServer orbital.W
 		service: service,
 	}
 
+	wsServer.Register(orbital.Topic{
+		Name:    "",
+		Handler: nil,
+	})
 }

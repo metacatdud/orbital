@@ -81,8 +81,8 @@ func (repo AppRepository) Find() (Apps, error) {
 		err = rows.Scan(
 			&appR.ID,
 			&appR.Name,
-			&appR.Description,
 			&appR.Version,
+			&appR.Description,
 			&appR.Icon,
 			&appR.Namespace,
 			&appR.OwnerKey,
