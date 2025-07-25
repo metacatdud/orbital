@@ -1,19 +1,21 @@
 package templates
 
 import (
-	"bytes"
 	"embed"
 	"fmt"
-	"golang.org/x/net/html"
 	"html/template"
 	"io/fs"
 	"orbital/web/wasm/pkg/dom"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
 //go:embed *
 var templateFS embed.FS
+
+// templateReg regexp for collecting only `<template data-name="xyz"> ... </template>`
+var templateReg = regexp.MustCompile(`(?s)<template\s+data-name="([^"]+)"[^>]*>(.*?)</template>`)
 
 type Registry struct {
 	templates map[string]*template.Template
@@ -41,7 +43,6 @@ func (r *Registry) Get(tplKey string) (*template.Template, error) {
 }
 
 func (r *Registry) loadTemplates() error {
-
 	err := fs.WalkDir(templateFS, ".", func(path string, d fs.DirEntry, err error) error {
 
 		if err != nil || d.IsDir() || filepath.Ext(path) != ".html" {
@@ -55,67 +56,37 @@ func (r *Registry) loadTemplates() error {
 		}
 
 		baseKey := strings.TrimSuffix(strings.TrimPrefix(path, "./"), ".html")
-		doc, err := html.Parse(bytes.NewReader(content))
-		if err != nil {
-			return err
-		}
+		matches := templateReg.FindAllSubmatch(content, -1)
+		for _, match := range matches {
+			tplKey := string(match[1])
+			tplBody := string(match[2])
+			key := fmt.Sprintf("%s/%s", baseKey, tplKey)
 
-		var walk func(node *html.Node)
-		walk = func(node *html.Node) {
-			// Iterate and remove unneeded node and do proper trimming
-			// to avoid unexpected behavior
-			for c := node.FirstChild; c != nil; {
-				next := c.NextSibling
-				if c.Type == html.TextNode {
-					trimmed := strings.TrimSpace(c.Data)
-					if trimmed == "" {
-						node.RemoveChild(c)
-					} else {
-						c.Data = trimmed
-					}
-				}
-
-				if c.Type == html.ElementNode {
-					walk(c)
-
-					if c.FirstChild == nil && len(c.Attr) == 0 {
-						node.RemoveChild(c)
-					}
-				}
-
-				c = next
+			var tpl *template.Template
+			tpl, err = template.New(tplKey).Funcs(Funcs).Parse(tplBody)
+			if err != nil {
+				dom.ConsoleError("template key:", key, "err: ", err.Error())
+				continue
 			}
 
-			if node.Type == html.ElementNode && node.Data == "template" {
-				var dataName string
-				for _, attr := range node.Attr {
-					if attr.Key == "data-name" {
-						dataName = attr.Val
-						break
-					}
-				}
-
-				if dataName == "" {
-					return
-				}
-
-				var buf bytes.Buffer
-				for c := node.FirstChild; c != nil; c = c.NextSibling {
-					html.Render(&buf, c)
-				}
-
-				key := fmt.Sprintf("%s/%s", baseKey, dataName)
-				r.templates[key] = template.Must(template.New(dataName).Parse(buf.String()))
-
-				dom.ConsoleLog("- load:", key)
-			}
+			r.templates[key] = tpl
+			dom.ConsoleLog("- load:", key)
 		}
-
-		walk(doc)
-
 		return nil
 	})
 
 	return err
 
+}
+
+// Funcs Helper Functions for HTML Templates
+var Funcs = template.FuncMap{
+	"contains": func(arr []string, v string) bool {
+		for _, a := range arr {
+			if a == v {
+				return true
+			}
+		}
+		return false
+	},
 }
