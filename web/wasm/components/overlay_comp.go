@@ -36,7 +36,6 @@ type OverlayComponent struct {
 }
 
 func NewOverlayComponent(di *orbital.Dependency, cfg OverlayConfig) *OverlayComponent {
-	dom.ConsoleLog("OverlayCfg", cfg.Actions)
 	base := NewBaseComponent(di, OverlayComponentRegKey, "orbital/overlay/overlay")
 	comp := &OverlayComponent{
 		BaseComponent: base,
@@ -68,7 +67,7 @@ func (comp *OverlayComponent) Mount(container *js.Value) error {
 		"windowCss": strings.Join(comp.css, " "),
 		"title":     comp.title,
 		"icon":      comp.icon,
-		"actions":   comp.actions,
+		"actions":   []string{"close"},
 	}
 
 	dom.ConsoleLog("OverlayComponentDATA", data)
@@ -123,7 +122,6 @@ func (comp *OverlayComponent) onInit() {
 }
 
 func (comp *OverlayComponent) bindUIEvents() {
-	dom.ConsoleLog("ACTION", comp.actions)
 	if hasAction(comp.actions, "close") {
 		comp.AddEventHandler(`[data-action="closeOverlay"]`, "click", comp.uiEventOverlayClose)
 	}
