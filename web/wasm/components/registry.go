@@ -14,7 +14,7 @@ func init() {
 	RegisterComponent(LoginComponentRegKey, func(di *orbital.Dependency) Component {
 		return NewLoginComponent(di)
 	})
-	RegisterComponent(AboutComponentRegKey, func(di *orbital.Dependency) Component { return NewAboutComponent(di) })
+	RegisterComponent(DashboardComponentRegKey, func(di *orbital.Dependency) Component { return NewDashboardComponent(di) })
 }
 
 type RegKey string
