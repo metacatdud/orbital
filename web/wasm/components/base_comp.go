@@ -59,7 +59,11 @@ func (comp *BaseComponent) OnUnmount(fn func()) {
 	comp.onUnmount = fn
 }
 
-func (comp *BaseComponent) AddEventHandler(sel, evt string, cb func(js.Value, []js.Value) interface{}) {
+func (comp *BaseComponent) Namespace() string {
+	return comp.namespace
+}
+
+func (comp *BaseComponent) AddEventHandler(sel, evt string, cb func(js.Value, []js.Value) any) {
 
 	cbWrap := js.FuncOf(cb)
 	uiHandler := uiEventHandler{
@@ -130,7 +134,7 @@ func (comp *BaseComponent) RegisterContainers() {
 
 	dockingAreas := dom.QuerySelectorAllFromElement(*comp.element, `[data-dock]`)
 	for _, d := range dockingAreas {
-		dockName := d.Get("dataset").Get("dock").String()
+		dockName := d.Call("getAttribute", "data-dock").String()
 		comp.docks[dockName] = d
 	}
 }

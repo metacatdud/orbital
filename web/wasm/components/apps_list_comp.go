@@ -60,6 +60,8 @@ func (comp *AppsListComponent) loadApps() {
 			return
 		}
 
+		dom.ConsoleLog("APPS", res.Apps)
+
 		comp.state.Set("state:apps:changed", res.Apps)
 	})
 }
@@ -88,7 +90,7 @@ func (comp *AppsListComponent) updateApps() {
 	dom.SetInnerHTML(container, "")
 
 	for _, app := range apps {
-		appLauncher := NewAppComponent(comp.DI, AppComponentRegKey.WithExtra(app.Name), app)
+		appLauncher := NewAppLauncherComponent(comp.DI, AppComponentRegKey.WithExtra("-", app.ID), app)
 		appLauncher.Mount(&container)
 	}
 

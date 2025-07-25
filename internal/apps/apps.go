@@ -44,10 +44,15 @@ func (service *Apps) List(_ context.Context, _ ListReq) (*ListResp, error) {
 	var apps []App
 	for _, dbApp := range dbApps {
 		apps = append(apps, App{
+			ID:          dbApp.ID,
 			Name:        dbApp.Name,
 			Icon:        dbApp.Icon,
 			Version:     dbApp.Version,
 			Description: dbApp.Description,
+			Namespace:   dbApp.Namespace,
+			OwnerKey:    dbApp.OwnerKey,
+			OwnerURL:    dbApp.OwnerURL,
+			Labels:      dbApp.Labels,
 			Apps:        nil,
 		})
 	}

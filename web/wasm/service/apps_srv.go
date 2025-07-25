@@ -14,10 +14,15 @@ const (
 )
 
 type App struct {
-	Name        string `json:"name"`
-	Icon        string `json:"icon"`
-	Version     string `json:"version"`
-	Description string `json:"description"`
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	Icon        string   `json:"icon"`
+	Version     string   `json:"version"`
+	Description string   `json:"description"`
+	Namespace   string   `json:"namespace"`
+	OwnerKey    string   `json:"ownerKey"`
+	OwnerURL    string   `json:"ownerUrl"`
+	Labels      []string `json:"labels"`
 }
 
 type AppsService struct {

@@ -1,11 +1,9 @@
 package components
 
 import (
-	"fmt"
 	"orbital/web/wasm/orbital"
 	"orbital/web/wasm/pkg/dom"
 	"orbital/web/wasm/pkg/state"
-	"syscall/js"
 )
 
 const (
@@ -30,10 +28,11 @@ func NewDashboardComponent(di *orbital.Dependency) *DashboardComponent {
 		appList:       appList,
 	}
 
-	comp.state.Set("state:dashboard:ready", false)
+	//comp.state.Set("state:dashboard:ready", false)
 
-	base.OnMount(func() {
+	comp.OnMount(func() {
 		comp.toggle("loading")
+		comp.mountAppList()
 	})
 
 	comp.state.Watch("state:dashboard:ready", func(oldV, newV interface{}) {
@@ -49,21 +48,24 @@ func (comp *DashboardComponent) ID() RegKey {
 	return DashboardComponentRegKey
 }
 
-func (comp *DashboardComponent) Mount(container *js.Value) error {
-	if !container.Truthy() {
-		return fmt.Errorf("dashboard component does not mount")
-	}
-
-	if err := comp.BaseComponent.Mount(container); err != nil {
-		return err
-	}
-
-	comp.mountAppList()
-	return nil
-}
+//func (comp *DashboardComponent) Mount(container *js.Value) error {
+//	if !container.Truthy() {
+//		return fmt.Errorf("dashboard component does not mount")
+//	}
+//
+//	if err := comp.BaseComponent.Mount(container); err != nil {
+//		return err
+//	}
+//
+//	comp.mountAppList()
+//	return nil
+//}
 
 func (comp *DashboardComponent) Unmount() error {
-	comp.appList.Unmount()
+	if comp.appList != nil {
+		comp.appList.Unmount()
+	}
+
 	return comp.BaseComponent.Unmount()
 }
 

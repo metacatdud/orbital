@@ -1,9 +1,9 @@
 package components
 
 import (
-	"fmt"
 	"orbital/web/wasm/orbital"
 	"orbital/web/wasm/pkg/dom"
+	"orbital/web/wasm/pkg/events"
 	"orbital/web/wasm/pkg/state"
 	"syscall/js"
 )
@@ -14,33 +14,48 @@ const (
 
 type MainComponent struct {
 	*BaseComponent
-
-	state *state.State
-
-	//TODO: add components here
+	di            *orbital.Dependency
+	events        *events.Event
+	state         *state.State
 	dashboardComp Component
-	overlayComp   Component
 	taskbarComp   Component
+	overlayComp   Component
+
+	isDashboardMounted bool
 }
 
 func NewMainComponent(di *orbital.Dependency) *MainComponent {
 	base := NewBaseComponent(di, MainComponentRegKey, "orbital/main/orbital")
 
-	// TODO: Register children components here: taskbar, overlay, desktop
-	dashboardComp := NewDashboardComponent(di)
-	overlayComp := NewOverlayComponent(di)
 	taskbarComp := NewTaskbarComponent(di)
 
 	comp := &MainComponent{
 		BaseComponent: base,
+		di:            di,
+		events:        di.Events,
 		state:         di.State,
-		dashboardComp: dashboardComp,
-		overlayComp:   overlayComp,
 		taskbarComp:   taskbarComp,
 	}
 
-	// OnMount hook
-	base.OnMount(comp.onMountHandler)
+	comp.events.On("evt:overlay:show", func(data OverlayConfig) {
+		comp.ShowOverlay(data)
+	})
+
+	comp.state.Watch("state:isAuthenticated", func(oldV, newV any) {
+		comp.onAuthChanged(newV)
+	})
+
+	comp.OnMount(func() {
+		comp.mountTaskbar()
+
+		// Check if dashboard can be mounted during mount time
+		isAuth := false
+		if isAuthRaw := comp.state.Get("state:isAuthenticated"); isAuthRaw != nil {
+			isAuth = isAuthRaw.(bool)
+		}
+
+		comp.mountDashboard(isAuth)
+	})
 
 	return comp
 }
@@ -50,119 +65,99 @@ func (comp *MainComponent) ID() RegKey {
 }
 
 func (comp *MainComponent) Mount(container *js.Value) error {
-	if !container.Truthy() {
-		return fmt.Errorf("orbital main component does not mount")
-	}
-
 	return comp.BaseComponent.Mount(container)
 }
 
 func (comp *MainComponent) Unmount() error {
-	comp.dashboardComp.Unmount()
-	comp.overlayComp.Unmount()
-	comp.taskbarComp.Unmount()
+	if comp.dashboardComp != nil {
+		err := comp.dashboardComp.Unmount()
+		if err != nil {
+			return err
+		}
+	}
+	if comp.taskbarComp != nil {
+		err := comp.taskbarComp.Unmount()
+		if err != nil {
+			return err
+		}
+	}
 
 	return comp.BaseComponent.Unmount()
 }
 
-func (comp *MainComponent) onMountHandler() {
-
-	// Hide loading screen
-	loadingElem := dom.QuerySelector("#loading-screen")
-	if !loadingElem.IsNull() {
-		dom.RemoveElement(loadingElem)
-	}
-
-	comp.state.Watch("state:overlay:toggle", func(oldV, newV interface{}) {
-		comp.toggleOverlay(newV.(bool))
-	})
-
-	comp.state.Watch("state:isAuthenticated", func(oldV, newV interface{}) {
-		if newV.(bool) {
-			comp.overlayComp.Unmount()
-			comp.mountDashboard(true)
-		}
-	})
-
-	isAuth := false
-	isAuthRaw := comp.state.Get("state:isAuthenticated")
-	if isAuthRaw != nil {
-		isAuth = isAuthRaw.(bool)
-	}
-
-	comp.mountDashboard(isAuth)
-	comp.mountOverlay(isAuth)
-	comp.mountTaskbar()
-}
-
-func (comp *MainComponent) mountDashboard(shouldInit bool) {
-	if !shouldInit {
-		return
-	}
-
-	container := comp.GetContainer("dashboard")
-	if container.IsNull() {
-		dom.ConsoleError("overlay component container is null", comp.ID())
-		return
-	}
-
-	dom.SetInnerHTML(container, "")
-
-	if err := comp.dashboardComp.Mount(&container); err != nil {
-		dom.ConsoleError("overlay component cannot be mounted", err.Error(), comp.ID())
-		return
-	}
-}
-
-func (comp *MainComponent) toggleDashboard(show bool) {
-	container := comp.GetContainer("dashboard")
-	if container.IsNull() {
-		dom.ConsoleError("dashboard component container is null", comp.ID())
-		return
-	}
-
-	if show {
-		dom.RemoveClass(container, "hide")
-		return
-	}
-
-	dom.AddClass(container, "hide")
-}
-
-func (comp *MainComponent) mountOverlay(shouldInit bool) {
-	if shouldInit {
-		return
-	}
-
-	comp.state.Set("state:overlay:currentChild", LoginComponentRegKey)
-
+func (comp *MainComponent) ShowOverlay(overlayConfig OverlayConfig) {
 	container := comp.GetContainer("overlay")
 	if container.IsNull() {
-		dom.ConsoleError("overlay component container is null", comp.ID())
+		dom.ConsoleError("[MainComponent] ShowOverlay. container is null")
 		return
+	}
+
+	// Unmount any previous overlay if exists
+	// This should not happen. Always make sure to call HideOverlay when
+	// done using overlay.
+	if comp.overlayComp != nil {
+		comp.overlayComp.Unmount()
+		comp.overlayComp = nil
 	}
 
 	dom.SetInnerHTML(container, "")
 
+	comp.overlayComp = NewOverlayComponent(comp.di, overlayConfig)
 	if err := comp.overlayComp.Mount(&container); err != nil {
-		dom.ConsoleError("overlay component cannot be mounted", err.Error(), comp.ID())
+		dom.ConsoleError("[MainComponent] ShowOverlay", err.Error())
 		return
 	}
+
+	dom.RemoveClass(container, "hide")
 }
 
-func (comp *MainComponent) toggleOverlay(show bool) {
+func (comp *MainComponent) HideOverlay() {
+
 	container := comp.GetContainer("overlay")
 	if container.IsNull() {
-		dom.ConsoleError("overlay component container is null", comp.ID())
-		return
-	}
-
-	if show {
-		dom.RemoveClass(container, "hide")
+		dom.ConsoleError("[MainComponent] ShowOverlay. container is null")
 		return
 	}
 
 	dom.AddClass(container, "hide")
+	if comp.overlayComp != nil {
+		comp.overlayComp.Unmount()
+		comp.overlayComp = nil
+	}
+
+	dom.SetInnerHTML(container, "")
+}
+
+func (comp *MainComponent) mountDashboard(shouldMount bool) {
+	container := comp.GetContainer("dashboard")
+	if container.IsNull() {
+		dom.ConsoleError("[dashboard] mountDashboard. container is null")
+		return
+	}
+
+	var err error
+	if shouldMount && !comp.isDashboardMounted {
+		comp.dashboardComp, err = LookupComponent(DashboardComponentRegKey, comp.di)
+		if err != nil {
+			dom.ConsoleError("[MainComponent] mountDashboard", err.Error())
+			return
+		}
+
+		if err = comp.dashboardComp.Mount(&container); err != nil {
+			dom.ConsoleError("[MainComponent] mountDashboard", err.Error())
+			return
+		}
+
+		comp.isDashboardMounted = true
+		return
+	}
+
+	if !shouldMount && comp.isDashboardMounted {
+		if comp.dashboardComp != nil {
+			_ = comp.dashboardComp.Unmount()
+		}
+		comp.isDashboardMounted = false
+	}
 }
 
 func (comp *MainComponent) mountTaskbar() {
@@ -178,4 +173,48 @@ func (comp *MainComponent) mountTaskbar() {
 		dom.ConsoleError("taskbar component cannot be mounted", err.Error(), comp.ID())
 		return
 	}
+}
+
+func (comp *MainComponent) onAuthChanged(val any) {
+	dom.ConsoleLog("[MainComponent] onAuthChanged:", val)
+	isAuth := false
+	if val != nil {
+		isAuth = val.(bool)
+	}
+
+	// Cleanup everything first
+	dashContainer := comp.GetContainer("dashboard")
+	overlayContainer := comp.GetContainer("overlay")
+
+	if !dashContainer.IsNull() {
+		dom.SetInnerHTML(dashContainer, "")
+	}
+
+	if !overlayContainer.IsNull() {
+		dom.AddClass(overlayContainer, "hide")
+		dom.SetInnerHTML(overlayContainer, "")
+	}
+
+	comp.mountDashboard(isAuth)
+	comp.setupAsUnauthenticated(isAuth)
+}
+
+// setupAsUnauthenticated will show an overlay in case the app has no session
+func (comp *MainComponent) setupAsUnauthenticated(isAuth bool) {
+
+	// If there is a session, skip!
+	if isAuth {
+		return
+	}
+
+	login := NewLoginComponent(comp.di)
+	comp.ShowOverlay(OverlayConfig{
+		Child:   login,
+		Title:   login.Title(),
+		Icon:    login.Icon(),
+		Actions: []string{"close"},
+		Css:     []string{"small"},
+		OnClose: nil,
+	})
+	comp.isDashboardMounted = false
 }

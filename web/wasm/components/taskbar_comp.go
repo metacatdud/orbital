@@ -65,7 +65,7 @@ func (comp *TaskbarComponent) bindUIEvents() {
 	comp.AddEventHandler(`[data-action="startOrbital"]`, "click", comp.uiEventStartOrbital)
 }
 
-func (comp *TaskbarComponent) uiEventStartOrbital(_ js.Value, args []js.Value) interface{} {
+func (comp *TaskbarComponent) uiEventStartOrbital(_ js.Value, args []js.Value) any {
 	e := args[0]
 	e.Call("stopPropagation")
 

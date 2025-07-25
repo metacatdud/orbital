@@ -55,11 +55,10 @@ func ready(di *orbital.Dependency) {
 		dom.ConsoleError("Cannot register service", service.AppsServiceKey)
 	}
 
-	checkAuthStatus(di)
-
 	mainComp := components.NewMainComponent(di)
 	_ = mainComp.Mount(&rootEl)
 
+	checkAuthStatus(di)
 }
 
 func wsStatusCheck(ws *transport.WsConn, evt *events.Event) {
@@ -80,7 +79,7 @@ func wsStatusCheck(ws *transport.WsConn, evt *events.Event) {
 }
 
 func checkAuthStatus(di *orbital.Dependency) {
-	di.State.Set("state:isAuthenticated", false)
+
 	authSvc := orbital.MustGetService[*service.AuthService](di, service.AuthServiceKey)
 
 	var async transport.Async

@@ -126,8 +126,14 @@ body {
     }
 }
 
-#overlay {
-    @apply absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white dark:bg-terminal-bg window-shadow rounded-lg flex-col;
+.overlay {
+    &.small {
+        @apply absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white dark:bg-terminal-bg window-shadow rounded-lg flex-col;
+    }
+
+    &.large {
+        @apply absolute top-6 left-6 right-6 bottom-6 bg-white dark:bg-terminal-bg rounded-md flex flex-col window-shadow z-10
+    }
 
     &.hide {
         @apply hidden;
@@ -147,10 +153,6 @@ body {
 
     .body {
         @apply p-6;
-    }
-
-    .footer {
-        @apply bg-os-taskbar dark:bg-terminal-taskbar border-t border-os-border dark:border-terminal-border p-2 text-sm flex justify-between items-center rounded-b-lg;
     }
 }
 

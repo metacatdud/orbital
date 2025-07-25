@@ -5,6 +5,7 @@ import (
 	"orbital/web/wasm/orbital"
 	"orbital/web/wasm/pkg/dom"
 	"orbital/web/wasm/pkg/state"
+	"strings"
 	"syscall/js"
 )
 
@@ -12,46 +13,43 @@ const (
 	OverlayComponentRegKey RegKey = "overlayComponent"
 )
 
-type OverlayComponent struct {
-	*BaseComponent
-	child Component
-	state *state.State
-
-	titleText string
-	iconClass string
-	container js.Value
+type OverlayConfig struct {
+	Child   Component
+	Title   string
+	Icon    string
+	Actions []string
+	Css     []string
+	OnClose func()
 }
 
-func NewOverlayComponent(di *orbital.Dependency) *OverlayComponent {
+type OverlayComponent struct {
+	*BaseComponent
+	child     Component
+	container *js.Value
+	state     *state.State
+
+	title   string
+	icon    string
+	actions []string
+	css     []string
+	onClose func()
+}
+
+func NewOverlayComponent(di *orbital.Dependency, cfg OverlayConfig) *OverlayComponent {
+	dom.ConsoleLog("OverlayCfg", cfg.Actions)
 	base := NewBaseComponent(di, OverlayComponentRegKey, "orbital/overlay/overlay")
 	comp := &OverlayComponent{
 		BaseComponent: base,
 		state:         di.State,
+		child:         cfg.Child,
+		title:         cfg.Title,
+		icon:          cfg.Icon,
+		css:           cfg.Css,
+		actions:       cfg.Actions,
+		onClose:       cfg.OnClose,
 	}
 
-	comp.OnMount(comp.onMountHandler)
-
-	comp.state.Watch("state:overlay:currentChild", func(oldVal, newVal interface{}) {
-		if oldVal == nil {
-			return
-		}
-
-		if oldVal == newVal {
-			return
-		}
-
-		newKey, ok := newVal.(RegKey)
-		if !ok {
-			dom.ConsoleError("Overlay: state:overlay:currentChild changed to non-RegKey")
-			return
-		}
-
-		dom.ConsoleLog("Overlay: currentChild changed to", newKey)
-
-		comp.swapChild(newKey)
-	})
-
-	comp.bindUIEvents()
+	comp.OnInit(comp.onInit)
 
 	return comp
 }
@@ -66,40 +64,39 @@ func (comp *OverlayComponent) Mount(container *js.Value) error {
 		comp.onInit()
 	}
 
-	raw := comp.state.Get("state:overlay:currentChild")
-	if raw == nil {
-		dom.ConsoleError("no child component set for overlay")
-		return comp.Unmount()
+	data := map[string]any{
+		"windowCss": strings.Join(comp.css, " "),
+		"title":     comp.title,
+		"icon":      comp.icon,
+		"actions":   comp.actions,
 	}
 
-	key, _ := raw.(RegKey)
+	dom.ConsoleLog("OverlayComponentDATA", data)
 
-	child, err := LookupComponent(key, comp.DI)
+	html, err := comp.Render(data)
 	if err != nil {
-		return fmt.Errorf("overlay: failed to lookup child %q: %w", key, err)
-	}
-
-	comp.child = child
-
-	comp.titleText = ""
-	comp.iconClass = ""
-	if mp, ok := child.(MetaProvider); ok {
-		comp.titleText = mp.Title()
-		comp.iconClass = mp.Icon()
-	}
-
-	html, err := comp.Render(nil)
-	if err != nil {
-		return err
+		return fmt.Errorf("OverlayComponent: render failed: %w", err)
 	}
 
 	el := dom.CreateElementFromString(html)
 	dom.AppendChild(*container, el)
+	comp.container = container
 
+	// Thought the BaseComponent.element
 	comp.element = &el
 	comp.RegisterContainers()
 
-	comp.container = *container
+	childContainer := comp.GetContainer("overlayBody")
+	if !childContainer.IsNull() && comp.child != nil {
+		if err = comp.child.Mount(&childContainer); err != nil {
+			dom.ConsoleError("overlayBody container not found")
+			return err
+		}
+	}
+
+	for _, uiEvt := range comp.uiEventHandlers {
+		dom.AddEventListener(uiEvt.selector, uiEvt.event, uiEvt.cb)
+	}
 
 	if comp.onMount != nil {
 		comp.onMount()
@@ -109,99 +106,50 @@ func (comp *OverlayComponent) Mount(container *js.Value) error {
 }
 
 func (comp *OverlayComponent) Unmount() error {
-	comp.state.Set("state:overlay:toggle", false)
 	if comp.child != nil {
 		comp.child.Unmount()
 	}
 
+	dom.AddClass(*comp.container, "hide")
 	return comp.BaseComponent.Unmount()
 }
 
-func (comp *OverlayComponent) Render(_ map[string]interface{}) (string, error) {
-	return comp.BaseComponent.Render(map[string]interface{}{
-		"title": comp.titleText,
-		"icon":  comp.iconClass,
-	})
+func (comp *OverlayComponent) Render(data map[string]any) (string, error) {
+	return comp.BaseComponent.Render(data)
 }
 
-func (comp *OverlayComponent) onMountHandler() {
-
-	dom.ConsoleLog("overlay mount child", comp.child.ID())
-
-	container := comp.GetContainer("overlayBody")
-	if container.IsNull() {
-		dom.ConsoleError("overlayBody container not found")
-		return
-	}
-	if comp.child != nil {
-		comp.child.Mount(&container)
-	}
-
-	comp.state.Set("state:overlay:toggle", true)
+func (comp *OverlayComponent) onInit() {
+	comp.bindUIEvents()
 }
 
 func (comp *OverlayComponent) bindUIEvents() {
-	comp.AddEventHandler(`[data-action="closeOverlay"]`, "click", comp.uiEventOverlayClose)
+	dom.ConsoleLog("ACTION", comp.actions)
+	if hasAction(comp.actions, "close") {
+		comp.AddEventHandler(`[data-action="closeOverlay"]`, "click", comp.uiEventOverlayClose)
+	}
+
+	if hasAction(comp.actions, "minimize") {
+		// TODO: Add handler for minimize
+	}
+
+	if hasAction(comp.actions, "maximize") {
+		// TODO: Add handler for maximize
+	}
 }
 
-func (comp *OverlayComponent) uiEventOverlayClose(_ js.Value, args []js.Value) interface{} {
-	comp.Unmount()
+func (comp *OverlayComponent) uiEventOverlayClose(_ js.Value, args []js.Value) any {
+	if comp.onClose != nil {
+		comp.onClose()
+	}
+	_ = comp.Unmount()
 	return nil
 }
 
-func (comp *OverlayComponent) swapChild(key RegKey) {
-
-	container := comp.container
-	if container.IsNull() {
-		dom.ConsoleError("cannot swapChild: container is null")
-		return
+func hasAction(actions []string, action string) bool {
+	for _, a := range actions {
+		if a == action {
+			return true
+		}
 	}
-
-	container.Set("innerHTML", "")
-	dom.RemoveElement(*comp.element)
-
-	if comp.child != nil {
-		comp.child.Unmount()
-	}
-
-	newChild, err := LookupComponent(key, comp.DI)
-	if err != nil {
-		dom.ConsoleError("overlay:swapChild", err.Error())
-		return
-	}
-
-	comp.child = newChild
-
-	comp.titleText = ""
-	comp.iconClass = ""
-	if mp, ok := newChild.(MetaProvider); ok {
-		comp.titleText = mp.Title()
-		comp.iconClass = mp.Icon()
-	}
-
-	html, err := comp.Render(nil)
-	if err != nil {
-		dom.ConsoleError("overlay update failed", err.Error())
-		return
-	}
-
-	el := dom.CreateElementFromString(html)
-
-	comp.element = &el
-	dom.AppendChild(container, el)
-
-	comp.RegisterContainers()
-	comp.bindUIEvents()
-
-	for _, ob := range comp.observers {
-		ob.OnParentRender()
-	}
-
-	body := comp.GetContainer("overlayBody")
-	if container.IsNull() {
-		dom.ConsoleError("overlayBody container not found")
-		return
-	}
-	newChild.Mount(&body)
-	comp.state.Set("state:overlay:toggle", true)
+	return false
 }
