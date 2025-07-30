@@ -5,26 +5,46 @@
 </template>
 
 <template data-name="appLauncher">
-    <button data-id="{{.id}}" data-action="launchApp" class="app-icon rounded-md p-3 w-20 h-20 flex flex-col items-center justify-center transition-all hover:scale-105 shadow-md">
-        <div class="w-12 h-12 icon-app rounded-md flex items-center justify-center mb-1.5 relative">
-            <i class="fas text-2xl text-os-text dark:text-terminal-text {{.icon}}"></i>
+    <button data-id="{{.id}}" data-action="launchApp" class="app-icon">
+        <div class="icon-wrapper">
+            <i class="fas text-2xl text-theme {{.icon}}"></i>
         </div>
-        <span class="text-xs font-medium mt-1">{{.title}}</span>
+        <span class="app-label">{{.title}}</span>
     </button>
 </template>
 
 <template data-name="appsGroup">
-    <div class="app-group">
-        <button class="group-icon dark:bg-os-bg text-terminal-text dark:text-terminal-text rounded-md p-3 w-20 h-20 flex flex-col items-center justify-center transition-all hover:scale-105 shadow-md">
-            <div class="w-12 h-12 icon-app rounded-md flex items-center justify-center mb-1.5 relative">
-                <i class="fas text-2xl text-os-text dark:text-terminal-text-300 {{.icon}}"></i>
-                <div class="mini-apps-indicator">
-                    <div class="mini-app-dot bg-os-bg dark:bg-terminal-bg"></div>
-                    <div class="mini-app-dot bg-os-accent dark:bg-terminal-accent"></div>
-                    <div class="mini-app-dot bg-os-text dark:bg-terminal-text"></div>
-                </div>
+    <div class="app-group relative">
+        <button data-id="{{.id}}" data-action="launchGroup"
+                class="group-icon">
+            <div class="icon-wrapper">
+                <i class="fas text-2xl text-theme {{.icon}}"></i>
             </div>
-            <span class="text-xs font-medium mt-1 text-os-text dark:text-terminal-text">{{.name}}</span>
+            <span class="group-label">{{.title}}</span>
         </button>
+
+        <div data-target="{{.id}}"
+             class="app-group-panel">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="group-title">
+                    <i class="fas text-theme text-sm {{.icon}}"></i>
+                    {{.title}}
+                </h3>
+                <button data-action="closeGroup"
+                        class="text-xs opacity-70 hover:opacity-100 p-1 rounded-full accent-bg/20 hover:opacity-80">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+                {{range $app := .data.Apps}}
+                <button class="app-icon">
+                    <div class="icon-wrapper">
+                        <i class="fas {{$app.Icon}} text-theme text-sm"></i>
+                    </div>
+                    <span class="app-label">{{$app.Name}}</span>
+                </button>
+                {{end}}
+            </div>
+        </div>
     </div>
 </template>

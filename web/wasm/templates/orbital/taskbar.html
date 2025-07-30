@@ -1,8 +1,8 @@
 <template data-name="taskbar">
-    <div id="taskbar">
+    <div class="taskbar">
         <!-- Start Button -->
         <div class="relative">
-            <button data-action="startOrbital" class="px-4 py-1.5 bg-os-accent dark:bg-terminal-accent hover:bg-os-accent/80 dark:hover:bg-terminal-accent/80 transition-colors duration-150">
+            <button data-action="startOrbital" class="px-4 py-1.5 accent-bg hover:opacity-80 transition-colors duration-150">
                 <i class="fas fa-thin fa-satellite-dish mr-2"></i>
                 orbital
             </button>
@@ -12,14 +12,13 @@
 
 
         <!-- Active Windows -->
-        <div data-dock="activeApps" class="flex-1"></div>
-
+        <div data-dock="taskbar-apps" class="flex-1"></div>
 
         <!-- System Tray -->
-        <div class="flex items-center space-x-4 px-4 text-sm">
+        <div class="system-tray">
             <button onclick="document.documentElement.classList.toggle('dark')" class="hover:opacity-100 transition-opacity">
                 <i class="fas fa-moon opacity-50 hover:opacity-100 block dark:hidden"></i>
-                <i class="fas fa-sun opacity-50 hover:opacity-100 hidden dark:block dark:text-terminal-text"></i>
+                <i class="fas fa-sun opacity-50 hover:opacity-100 hidden dark:block text-theme"></i>
             </button>
             <span class="clock"> 21:00 </span>
         </div>
@@ -27,10 +26,10 @@
 </template>
 
 <template data-name="taskbarStartContent">
-    <div id="taskbarStartContent" data-id="startMenu" class="hide">
+    <div class="taskbar-start hide" data-id="startMenu">
         <div class="header">
-            <div class="text-sm font-semibold dark:text-terminal-text dark:terminal-glow">Welcome, stranger</div>
-            <div class="text-xs opacity-70 dark:text-terminal-text">v1.2.3</div>
+            <div class="text-sm font-semibold text-theme terminal-glow">Welcome, stranger</div>
+            <div class="text-xs opacity-70 text-theme">v1.2.3</div>
         </div>
         <div class="py-1">
             // items go here
@@ -43,7 +42,7 @@
 </template>
 
 <template data-name="taskbarActiveAppsItem">
-    <div class="inline-block px-3 py-1 bg-os-accent/50 dark:bg-terminal-accent text-sm dark:text-terminal-text dark:terminal-glow">
+    <div class="taskbar-app">
         <i class="fas fa-lock mr-2"></i>
         Login
     </div>

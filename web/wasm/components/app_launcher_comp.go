@@ -25,7 +25,12 @@ type AppLauncherComponent struct {
 var _ MetaProvider = (*AppLauncherComponent)(nil)
 
 func NewAppLauncherComponent(di *orbital.Dependency, id RegKey, data service.App) *AppLauncherComponent {
-	base := NewBaseComponent(di, id, "dashboard/app/appLauncher")
+	namespace := "dashboard/app/appLauncher"
+	if len(data.Apps) > 0 {
+		namespace = "dashboard/app/appsGroup"
+	}
+
+	base := NewBaseComponent(di, id, namespace)
 	comp := &AppLauncherComponent{
 		BaseComponent: base,
 		id:            id,
@@ -33,7 +38,7 @@ func NewAppLauncherComponent(di *orbital.Dependency, id RegKey, data service.App
 		events:        di.Events,
 		state:         di.State,
 	}
-
+	dom.ConsoleLog("ppLauncherComponent:", data.ID, data.Name, namespace)
 	comp.bindUIEvents()
 
 	return comp
@@ -48,7 +53,14 @@ func (comp *AppLauncherComponent) Mount(container *js.Value) error {
 		comp.onInit()
 	}
 
-	html, err := comp.Render(nil)
+	data := map[string]any{
+		"id":    comp.id,
+		"title": comp.Title(),
+		"icon":  comp.Icon(),
+		"data":  comp.data,
+	}
+
+	html, err := comp.Render(data)
 	if err != nil {
 		return err
 	}
@@ -74,12 +86,8 @@ func (comp *AppLauncherComponent) Unmount() error {
 	return comp.BaseComponent.Unmount()
 }
 
-func (comp *AppLauncherComponent) Render(_ map[string]any) (string, error) {
-	return comp.BaseComponent.Render(map[string]any{
-		"id":    comp.ID().String(),
-		"title": comp.Title(),
-		"icon":  comp.Icon(),
-	})
+func (comp *AppLauncherComponent) Render(data map[string]any) (string, error) {
+	return comp.BaseComponent.Render(data)
 }
 
 func (comp *AppLauncherComponent) Title() string {
@@ -96,6 +104,12 @@ func (comp *AppLauncherComponent) bindUIEvents() {
 		"click",
 		comp.uiEventLaunchApp,
 	)
+
+	comp.AddEventHandler(
+		fmt.Sprintf(`[data-id="%s"][data-action="launchGroup"]`, comp.ID()),
+		"click",
+		comp.uiEventLaunchGroup,
+	)
 }
 
 func (comp *AppLauncherComponent) uiEventLaunchApp(_ js.Value, args []js.Value) any {
@@ -108,9 +122,14 @@ func (comp *AppLauncherComponent) uiEventLaunchApp(_ js.Value, args []js.Value) 
 		Child:   app,
 		Title:   comp.Title(),
 		Icon:    comp.Icon(),
-		Actions: []string{"close"},
+		Actions: []string{"close", "minimize"},
 		Css:     []string{"large"},
 		OnClose: nil,
 	})
+	return nil
+}
+
+func (comp *AppLauncherComponent) uiEventLaunchGroup(_ js.Value, args []js.Value) any {
+	dom.ConsoleLog("Group Apps", comp.data.Apps)
 	return nil
 }

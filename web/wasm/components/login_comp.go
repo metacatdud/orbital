@@ -15,8 +15,7 @@ const (
 
 type LoginComponent struct {
 	*BaseComponent
-	namespace string
-	authSvc   *service.AuthService
+	authSvc *service.AuthService
 }
 
 var _ MetaProvider = (*LoginComponent)(nil)

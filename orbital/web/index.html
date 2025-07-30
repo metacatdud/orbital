@@ -1,53 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Orbital</title>
-    <link rel="stylesheet" href="fontawesome.min.css" />
-    <link rel="stylesheet" href="orbital.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orbital</title>
+  <link rel="stylesheet" href="fontawesome.min.css" />
+  <link rel="stylesheet" href="orbital.css" />
 </head>
 
-<body>
-<div id="loading-screen" class="loading-widget">
+<body class="font-mono bg-theme text-theme min-h-screen transition-colors duration-200">
+  <div id="loading-screen" class="loading-widget">
     <div class="p-6 max-w-sm">
-        <div class="spinner"></div>
-        <div class="loading-text">Loading ...</div>
+      <div class="spinner"></div>
+      <div class="loading-text">Loading ...</div>
     </div>
-</div>
+  </div>
 
-<div id="app-screen" class="app-widget"></div>
+  <div id="app-screen" class="app-widget"></div>
 
-<script src="wasm_exec.js"></script>
-<script type="module">
-    const go = new Go();
+  <script src="wasm_exec.js"></script>
+  <script type="module">
+      const go = new Go();
 
-    async function loadOrbital() {
-        const wasmRes = await fetch('orbital.wasm')
-        if (!wasmRes.ok) {
-            throw new Error(`[orbital] Failed to load orbital.wasm`)
-        }
+      async function loadOrbital() {
+          const wasmRes = await fetch('orbital.wasm')
+          if (!wasmRes.ok) {
+              throw new Error(`[orbital] Failed to load orbital.wasm`)
+          }
 
-        let orbitalInstance
-        try {
-            const {instance} = await WebAssembly.instantiate(wasmRes, go.importObject)
-            orbitalInstance = instance
-        } catch (err) {
-            const buf = await wasmRes.arrayBuffer()
-            const {instance} = await WebAssembly.instantiate(new Uint8Array(buf), go.importObject)
-            orbitalInstance = instance
-        }
+          let orbitalInstance
+          try {
+              const {instance} = await WebAssembly.instantiate(wasmRes, go.importObject)
+              orbitalInstance = instance
+          } catch (err) {
+              const buf = await wasmRes.arrayBuffer()
+              const {instance} = await WebAssembly.instantiate(new Uint8Array(buf), go.importObject)
+              orbitalInstance = instance
+          }
 
-        // Run the WASM
-        go.run(orbitalInstance)
+          // Run the WASM
+          go.run(orbitalInstance)
 
-        // Add a small delay for extra safety than boot the app
-        if (typeof bootstrapApp === "function") {
-            setTimeout(bootstrapApp, 500);
-        }
-    }
+          // Add a small delay for extra safety than boot the app
+          if (typeof bootstrapApp === "function") {
+              setTimeout(bootstrapApp, 500);
+          }
+      }
 
-    loadOrbital();
-</script>
+      loadOrbital();
+  </script>
 </body>
 </html>

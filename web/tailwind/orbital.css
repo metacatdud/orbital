@@ -127,7 +127,6 @@ body {
 }
 
 .overlay {
-
     &.small {
         @apply absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white dark:bg-terminal-bg window-shadow rounded-lg flex-col;
     }
@@ -186,7 +185,7 @@ body {
     position: relative;
 }
 
-group-icon {
+.group-icon {
     position: relative;
     overflow: hidden;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -208,7 +207,7 @@ group-icon {
     opacity: 1;
 }
 
-group-icon-container {
+.group-icon-container {
     position: relative;
     display: flex;
     align-items: center;

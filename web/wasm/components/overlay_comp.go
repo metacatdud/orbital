@@ -54,7 +54,12 @@ func NewOverlayComponent(di *orbital.Dependency, cfg OverlayConfig) *OverlayComp
 }
 
 func (comp *OverlayComponent) ID() RegKey {
+	if comp.child != nil {
+		return OverlayComponentRegKey.WithExtra("-", comp.child.ID())
+	}
+
 	return OverlayComponentRegKey
+
 }
 
 func (comp *OverlayComponent) Mount(container *js.Value) error {
@@ -64,10 +69,11 @@ func (comp *OverlayComponent) Mount(container *js.Value) error {
 	}
 
 	data := map[string]any{
+		"id":        comp.ID(),
 		"windowCss": strings.Join(comp.css, " "),
 		"title":     comp.title,
 		"icon":      comp.icon,
-		"actions":   []string{"close"},
+		"actions":   comp.actions,
 	}
 
 	dom.ConsoleLog("OverlayComponentDATA", data)

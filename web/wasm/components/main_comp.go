@@ -65,6 +65,11 @@ func (comp *MainComponent) ID() RegKey {
 }
 
 func (comp *MainComponent) Mount(container *js.Value) error {
+	// TODO: Remove the node all together maybe?
+	dom.QuerySelector("#loading-screen").
+		Get("classList").
+		Call("add", "hide")
+
 	return comp.BaseComponent.Mount(container)
 }
 
@@ -176,7 +181,6 @@ func (comp *MainComponent) mountTaskbar() {
 }
 
 func (comp *MainComponent) onAuthChanged(val any) {
-	dom.ConsoleLog("[MainComponent] onAuthChanged:", val)
 	isAuth := false
 	if val != nil {
 		isAuth = val.(bool)
@@ -191,8 +195,7 @@ func (comp *MainComponent) onAuthChanged(val any) {
 	}
 
 	if !overlayContainer.IsNull() {
-		dom.AddClass(overlayContainer, "hide")
-		dom.SetInnerHTML(overlayContainer, "")
+		comp.HideOverlay()
 	}
 
 	comp.mountDashboard(isAuth)

@@ -1,0 +1,1 @@
+ALTER TABLE applications ADD COLUMN is_external BOOLEAN NOT NULL DEFAULT 0;

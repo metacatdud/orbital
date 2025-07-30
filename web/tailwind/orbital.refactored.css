@@ -1,0 +1,340 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --orbital-bg: #f8fafc;
+    --orbital-taskbar: #f1f5f9;
+    --orbital-accent: #e2e8f0;
+    --orbital-accent-rgb: 226, 232, 240; /* RGB for #e2e8f0 */
+    --orbital-border: #cbd5e1;
+    --orbital-text: #475569;
+    --orbital-glow: #00ff9520;
+
+    --alert-success: #10b981;
+    --alert-warning: #f59e0b;
+    --alert-error: #ef4444;
+    --alert-info: #3b82f6;
+}
+
+@layer components {
+    .text-theme {
+        @apply text-[color:var(--orbital-text)];
+    }
+
+    .bg-theme {
+        @apply bg-[color:var(--orbital-bg)];
+    }
+
+    .taskbar-bg {
+        @apply bg-[color:var(--orbital-taskbar)];
+    }
+
+    .border-theme {
+        @apply border-[color:var(--orbital-border)];
+    }
+
+    .accent-bg {
+        @apply bg-[color:var(--orbital-accent)];
+    }
+
+    .terminal-glow {
+        text-shadow: 0 0 10px var(--orbital-glow);
+    }
+
+    .window-shadow {
+        @apply shadow;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 8px 32px -8px rgba(0, 0, 0, 0.3);
+    }
+
+    .show {
+        display: inherit !important;
+    }
+
+    .hide {
+        display: none !important;
+    }
+
+    .form-input {
+        @apply w-full px-3 py-2 rounded border transition-all;
+        background-color: white;
+        border-color: var(--orbital-border);
+    }
+
+    .form-input.error {
+        border-color: var(--alert-error);
+    }
+
+    .form-input.warning {
+        border-color: var(--alert-warning);
+    }
+
+    .form-button {
+        @apply px-4 py-2 text-sm font-medium rounded transition;
+    }
+
+    .form-button-primary {
+        background-color: var(--orbital-accent);
+        color: var(--orbital-text);
+    }
+
+    .form-button-secondary {
+        border: 1px solid var(--orbital-border);
+    }
+
+    .helper-text {
+        font-size: 0.6rem;
+        margin-top: 0.25rem;
+    }
+
+    .helper-text.error {
+        color: var(--alert-error);
+    }
+
+    .helper-text.warning {
+        color: var(--alert-warning);
+    }
+
+    .loading-widget {
+        @apply absolute inset-0 flex flex-col justify-center items-center;
+    }
+
+    .loading-widget .spinner {
+        animation: spin 2s linear infinite;
+        @apply animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500/75;
+    }
+
+    .loading-widget .loading-text {
+        @apply mt-4 text-theme font-semibold;
+    }
+
+    .loading-widget.hide {
+        @apply hidden;
+    }
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+body {
+    @apply font-mono bg-theme text-theme min-h-screen transition-colors duration-200;
+}
+
+.dark {
+    --orbital-bg: #0a1322;
+    --orbital-taskbar: #0f172a;
+    --orbital-accent: #1e293b;
+    --orbital-accent-rgb: 30, 41, 59; /* RGB for #1e293b */
+    --orbital-border: #00ff9580;
+    --orbital-text: #00ff95;
+    --orbital-glow: #00ff9520;
+
+    .form-button-primary {
+        background-color: var(--orbital-accent);
+        color: var(--orbital-text);
+    }
+
+    .form-button-secondary {
+        border-color: var(--orbital-border);
+    }
+
+    .form-input {
+        background-color: rgba(30, 41, 59, 0.2);
+        border-color: var(--orbital-border);
+    }
+
+    .helper-text.error {
+        color: rgba(239, 68, 68, 0.9);
+    }
+
+    .helper-text.warning {
+        color: rgba(245, 158, 11, 0.9);
+    }
+}
+
+@layer components {
+    .overlay {
+        @apply flex flex-col;
+    }
+
+    .overlay.small {
+        @apply absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white dark:bg-[var(--orbital-bg)] window-shadow rounded-lg;
+    }
+
+    .overlay.large {
+        @apply absolute top-6 left-6 right-6 bottom-6 bg-white dark:bg-[var(--orbital-bg)] rounded-md flex window-shadow z-10;
+    }
+
+    .overlay.hide {
+        @apply hidden;
+    }
+
+    .overlay.show {
+        @apply flex;
+    }
+
+    .overlay .header {
+        @apply [background-color:var(--orbital-taskbar)] p-2 border-b border-[var(--orbital-border)] flex justify-between items-center rounded-t-lg;
+    }
+
+    .overlay .header .title {
+        @apply text-sm opacity-70;
+        color: var(--orbital-text);
+        text-shadow: 0 0 10px var(--orbital-glow);
+    }
+
+    .overlay .body {
+        @apply p-6;
+    }
+
+    .dark {
+        .overlay {
+            box-shadow: 0 0 0 1px rgba(0, 255, 149, 0.2),
+            0 12px 24px -8px rgba(0, 255, 149, 0.25),
+            0 4px 8px rgba(0, 0, 0, 0.5);
+        }
+    }
+}
+
+@layer components {
+    .overlay-placeholder {
+        @apply fixed inset-0 bottom-12 backdrop-blur-sm z-50;
+        background-color: var(--orbital-bg);
+    }
+
+    .dark {
+        .overlay-placeholder {
+            background-color: rgba(10, 19, 34, 0.8);
+        }
+    }
+}
+
+@layer components {
+    .taskbar-placeholder {
+        @apply z-[100];
+    }
+
+    .taskbar {
+        @apply h-12 bg-[color:var(--orbital-taskbar)] border-t border-[color:var(--orbital-border)] flex items-center justify-between px-1;
+    }
+
+    .taskbar-start {
+        @apply absolute bottom-12 left-0 w-64 bg-white border border-[color:var(--orbital-border)] rounded-t-lg shadow-lg;
+    }
+
+    .taskbar-start.hide {
+        @apply hidden;
+    }
+
+    .taskbar-start .header {
+        @apply p-3 rounded-t-lg;
+        background-color: var(--orbital-accent);
+    }
+
+    .system-tray {
+        @apply flex items-center space-x-4 px-4 text-sm;
+    }
+
+    .clock {
+        @apply opacity-70;
+        color: var(--orbital-text);
+    }
+
+    .taskbar-app {
+        @apply inline-block px-3 py-1 text-sm;
+        background-color: rgba(var(--orbital-accent-rgb), 0.5);
+        color: var(--orbital-text);
+        text-shadow: 0 0 10px var(--orbital-glow);
+    }
+
+    .dark {
+        .taskbar {
+            background-color: var(--orbital-taskbar);
+            border-color: var(--orbital-border);
+        }
+
+        .taskbar-start {
+            background-color: var(--orbital-taskbar);
+            border-color: var(--orbital-border);
+        }
+
+        .taskbar-start .header {
+            background-color: var(--orbital-accent);
+        }
+
+        .clock {
+            color: var(--orbital-text);
+            text-shadow: 0 0 10px var(--orbital-glow);
+        }
+
+        .taskbar-app {
+            color: var(--orbital-text);
+            background-color: var(--orbital-accent);
+            text-shadow: 0 0 10px var(--orbital-glow);
+        }
+    }
+}
+
+@layer components {
+    .app-icon {
+        @apply transition-all hover:scale-105 rounded-md shadow flex flex-col items-center justify-center w-20 h-20 p-3;
+    }
+
+    .app-icon span {
+        @apply text-[12px] font-medium text-theme mt-1;
+    }
+
+    .group-icon {
+        @apply transition-all hover:scale-105 rounded-md shadow flex flex-col items-center justify-center w-20 h-20 p-3;
+    }
+
+    .icon-wrapper {
+        @apply w-12 h-12 flex items-center justify-center rounded-md border;
+        background-color: var(--orbital-accent);
+        border-color: var(--orbital-border);
+    }
+
+    .app-group-panel {
+        @apply absolute left-0 top-full mt-2 w-64 p-3 rounded-md shadow-lg border bg-theme z-20;
+        border-color: var(--orbital-border);
+    }
+
+    .group-title {
+        @apply text-xs font-medium flex items-center gap-2 text-theme mb-1;
+    }
+
+    .app-label {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 4.5rem;
+        text-align: center;
+    }
+
+    .group-label {
+        @apply text-[12px] font-medium text-theme mt-1 app-label;
+    }
+
+    .dark {
+        .icon-wrapper {
+            background-color: var(--orbital-accent);
+            border-color: var(--orbital-border);
+        }
+
+        .app-group-panel {
+            background-color: var(--orbital-bg);
+            border-color: var(--orbital-border);
+        }
+
+        .group-title {
+            color: var(--orbital-text);
+            text-shadow: 0 0 6px var(--orbital-glow);
+        }
+    }
+}

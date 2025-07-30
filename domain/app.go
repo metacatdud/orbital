@@ -16,7 +16,8 @@ type App struct {
 	OwnerKey    string   `json:"ownerKey"`
 	OwnerURL    string   `json:"ownerUrl"`
 	Labels      []string `json:"labels"`
-	ParentID    string   `json:"parent_id"`
+	ParentID    string   `json:"parentId"`
+	IsExternal  bool     `json:"isExternal"`
 }
 
 type appRow struct {
@@ -30,6 +31,7 @@ type appRow struct {
 	OwnerURL    sql.NullString
 	Labels      sql.NullString
 	ParentID    sql.NullString
+	IsExternal  sql.NullBool
 }
 
 type Apps []App
@@ -48,16 +50,9 @@ func (repo AppRepository) GetByID(id string) (*App, error) {
 
 	var appR appRow
 	err := row.Scan(
-		&appR.ID,
-		&appR.Name,
-		&appR.Description,
-		&appR.Version,
-		&appR.Icon,
-		&appR.Namespace,
-		&appR.OwnerKey,
-		&appR.OwnerURL,
-		&appR.Labels,
-		&appR.ParentID,
+		&appR.ID, &appR.Name, &appR.Version, &appR.Description,
+		&appR.Icon, &appR.Namespace, &appR.OwnerKey, &appR.OwnerURL,
+		&appR.Labels, &appR.ParentID, &appR.IsExternal,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to scan user row: %w", err)
@@ -69,7 +64,8 @@ func (repo AppRepository) GetByID(id string) (*App, error) {
 }
 
 func (repo AppRepository) Find() (Apps, error) {
-	rows, err := repo.db.Client().Query(`SELECT id, name, version, description, icon, namespace, owner_key, owner_url, labels, parent_id FROM applications`)
+	query := `SELECT id, name, version, description, icon, namespace, owner_key, owner_url, labels, parent_id FROM applications`
+	rows, err := repo.db.Client().Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query users: %w", err)
 	}
@@ -79,17 +75,72 @@ func (repo AppRepository) Find() (Apps, error) {
 	for rows.Next() {
 		var appR appRow
 		err = rows.Scan(
-			&appR.ID,
-			&appR.Name,
-			&appR.Version,
-			&appR.Description,
-			&appR.Icon,
-			&appR.Namespace,
-			&appR.OwnerKey,
-			&appR.OwnerURL,
-			&appR.Labels,
-			&appR.ParentID,
+			&appR.ID, &appR.Name, &appR.Version, &appR.Description,
+			&appR.Icon, &appR.Namespace, &appR.OwnerKey, &appR.OwnerURL,
+			&appR.Labels, &appR.ParentID, &appR.IsExternal,
 		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan user row: %w", err)
+		}
+
+		apps = append(apps, mapRowToApp(appR))
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return apps, nil
+}
+
+func (repo AppRepository) FindOnlyStandalone() (Apps, error) {
+	query := `SELECT id, name, version, description, icon, namespace, owner_key, owner_url, labels, parent_id, is_external FROM applications WHERE parent_id IS NULL`
+	rows, err := repo.db.Client().Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query users: %w", err)
+	}
+	defer rows.Close()
+
+	var apps Apps
+	for rows.Next() {
+		var appR appRow
+		err = rows.Scan(
+			&appR.ID, &appR.Name, &appR.Version, &appR.Description,
+			&appR.Icon, &appR.Namespace, &appR.OwnerKey, &appR.OwnerURL,
+			&appR.Labels, &appR.ParentID, &appR.IsExternal,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan user row: %w", err)
+		}
+
+		apps = append(apps, mapRowToApp(appR))
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return apps, nil
+
+}
+
+func (repo AppRepository) FindByParentID(parentID string) (Apps, error) {
+	query := `SELECT id, name, version, description, icon, namespace, owner_key, owner_url, labels, parent_id, is_external FROM applications WHERE parent_id = ?`
+	rows, err := repo.db.Client().Query(query, parentID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query users: %w", err)
+	}
+	defer rows.Close()
+
+	var apps Apps
+	for rows.Next() {
+		var appR appRow
+		err = rows.Scan(
+			&appR.ID, &appR.Name, &appR.Version, &appR.Description,
+			&appR.Icon, &appR.Namespace, &appR.OwnerKey, &appR.OwnerURL,
+			&appR.Labels, &appR.ParentID, &appR.IsExternal,
+		)
+
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan user row: %w", err)
 		}
