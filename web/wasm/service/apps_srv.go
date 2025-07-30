@@ -23,6 +23,8 @@ type App struct {
 	OwnerKey    string   `json:"ownerKey"`
 	OwnerURL    string   `json:"ownerUrl"`
 	Labels      []string `json:"labels"`
+	IsExternal  bool     `json:"isExternal"`
+	Apps        []App    `json:"apps"`
 }
 
 type AppsService struct {

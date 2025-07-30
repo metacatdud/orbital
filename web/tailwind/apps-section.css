@@ -1,0 +1,55 @@
+@layer components {
+  .app-icon {
+    @apply transition-all hover:scale-105 rounded-md shadow flex flex-col items-center justify-center w-20 h-20 p-3;
+  }
+
+  .app-icon span {
+    @apply text-[10px] font-medium text-theme mt-1;
+  }
+
+  .group-icon {
+    @apply transition-all hover:scale-105 rounded-md shadow flex flex-col items-center justify-center w-20 h-20 p-3;
+  }
+
+  .group-label {
+    @apply text-[10px] font-medium text-theme mt-1;
+  }
+
+  .icon-wrapper {
+    @apply w-12 h-12 flex items-center justify-center rounded-md border;
+    background-color: var(--orbital-accent);
+    border-color: var(--orbital-border);
+  }
+
+  .app-group-panel {
+    @apply absolute left-0 top-full mt-2 w-64 p-3 rounded-md shadow-lg border bg-theme z-20;
+    border-color: var(--orbital-border);
+  }
+
+  .group-title {
+    @apply text-xs font-medium flex items-center gap-2 text-theme mb-1;
+  }
+
+  .app-label {
+    @apply text-[9px] font-normal leading-none text-theme;
+  }
+}
+
+@layer components {
+  .dark {
+    .icon-wrapper {
+      background-color: var(--orbital-accent);
+      border-color: var(--orbital-border);
+    }
+
+    .app-group-panel {
+      background-color: var(--orbital-bg);
+      border-color: var(--orbital-border);
+    }
+
+    .group-title {
+      color: var(--orbital-text);
+      text-shadow: 0 0 6px var(--orbital-glow);
+    }
+  }
+}

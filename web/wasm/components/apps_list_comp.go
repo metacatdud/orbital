@@ -60,8 +60,6 @@ func (comp *AppsListComponent) loadApps() {
 			return
 		}
 
-		dom.ConsoleLog("APPS", res.Apps)
-
 		comp.state.Set("state:apps:changed", res.Apps)
 	})
 }
