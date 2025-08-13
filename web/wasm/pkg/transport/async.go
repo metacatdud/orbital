@@ -8,7 +8,7 @@ type Async struct {
 	wg sync.WaitGroup
 }
 
-// Async executes a function asynchronously without returning a value simmilar to a JS callback
+// Async executes a function asynchronously without returning a value similar to a JS callback
 func (a *Async) Async(fn func()) {
 	a.wg.Add(1)
 	go func() {
