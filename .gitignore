@@ -11,7 +11,6 @@ go.work.sum
 .idea
 bin
 web/tailwind/node_modules
-orbital/web/*
-!orbital/web/index.html
+orbital/web/orbital.wasm
+orbital/web/wasm_exec.js
 storage/
-!web/wasm/pkg/storage

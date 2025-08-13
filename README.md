@@ -2,9 +2,16 @@
 
 ---
 
-Open source and simplified orchestration for containers
+AI for self-hosted infrastructure orchestration.
 
 ## Install
+
+#### Wasm setup
+
+- Obtain go `wasm_exec.js` from your current go install
+    ```shell
+    cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" ./orbital/web/
+    ```
 
 ## Contribute
 
