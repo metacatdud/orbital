@@ -87,18 +87,17 @@ func (ws *WsConn) init() {
 	ws.client.Call("addEventListener", "error", js.FuncOf(ws.onError))
 }
 
-func (ws *WsConn) onOpen(this js.Value, args []js.Value) interface{} {
+func (ws *WsConn) onOpen(_ js.Value, _ []js.Value) interface{} {
 	ws.isOpen = true
 	ws.reconnectAttempts = 0
 
-	dom.ConsoleLog("WebSocket connection open")
 	return nil
 }
 
-func (ws *WsConn) onClose(this js.Value, args []js.Value) interface{} {
+func (ws *WsConn) onClose(_ js.Value, _ []js.Value) interface{} {
 	ws.isOpen = false
 
-	dom.ConsoleLog("WebSocket connection closed")
+	dom.ConsoleWarn("WebSocket connection closed")
 	if ws.reconnect {
 		ws.scheduleReconnect()
 	}
@@ -106,7 +105,7 @@ func (ws *WsConn) onClose(this js.Value, args []js.Value) interface{} {
 	return nil
 }
 
-func (ws *WsConn) onMessage(this js.Value, args []js.Value) interface{} {
+func (ws *WsConn) onMessage(_ js.Value, args []js.Value) interface{} {
 	event := args[0]
 	dataVal := event.Get("data")
 
@@ -119,7 +118,7 @@ func (ws *WsConn) onMessage(this js.Value, args []js.Value) interface{} {
 	return nil
 }
 
-func (ws *WsConn) onError(this js.Value, args []js.Value) interface{} {
+func (ws *WsConn) onError(_ js.Value, _ []js.Value) interface{} {
 	dom.ConsoleLog("WebSocket connection error")
 	if ws.reconnect {
 		ws.scheduleReconnect()
