@@ -3,67 +3,113 @@
 @tailwind utilities;
 
 :root {
-    /* Light Theme Colors */
-    --os-bg: #f8fafc;
-    --os-taskbar: #f1f5f9;
-    --os-accent: #e2e8f0;
-    --os-border: #cbd5e1;
-    --os-text: #475569;
+    --orbital-bg: #f8fafc;
+    --orbital-taskbar: #f1f5f9;
+    --orbital-accent: #e2e8f0;
+    --orbital-accent-rgb: 226, 232, 240; /* RGB for #e2e8f0 */
+    --orbital-border: #cbd5e1;
+    --orbital-text: #475569;
+    --orbital-glow: #00ff9520;
 
-    /* Dark Theme Colors */
-    --terminal-bg: #0a1322;
-    --terminal-taskbar: #0f172a;
-    --terminal-accent: #1e293b;
-    --terminal-border: #00ff9580;
-    --terminal-text: #00ff95;
-    --terminal-glow: #00ff9520;
-
-    /* Alert Colors */
     --alert-success: #10b981;
     --alert-warning: #f59e0b;
     --alert-error: #ef4444;
     --alert-info: #3b82f6;
 }
 
-.orbital-icon {
-    @apply opacity-50;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cellipse cx='50' cy='50' rx='28' ry='25' fill='transparent' stroke='%23333' stroke-width='1.5'/%3E%3Cellipse cx='50' cy='50' rx='40' ry='10' fill='transparent' stroke='%23333' stroke-width='0.8' stroke-opacity='0.7' transform='rotate(-15 50 50)'/%3E%3Cpath d='M35,45 Q42,55 35,60 Q30,65 40,65' fill='transparent' stroke='%23333' stroke-width='0.8' stroke-opacity='0.7'/%3E%3Cpath d='M55,40 Q65,45 70,50 Q65,55 60,60' fill='transparent' stroke='%23333' stroke-width='0.8' stroke-opacity='0.7'/%3E%3Cellipse cx='20' cy='50' rx='9' ry='8' fill='transparent' stroke='%23333' stroke-width='1.5'/%3E%3Ccircle cx='17' cy='48' r='2' fill='transparent' stroke='%23333' stroke-width='0.7'/%3E%3Ccircle cx='23' cy='52' r='1.5' fill='transparent' stroke='%23333' stroke-width='0.7'/%3E%3Cellipse cx='20' cy='46' rx='1.5' ry='1' fill='transparent' stroke='%23333' stroke-width='0.7'/%3E%3Cellipse cx='50' cy='80' rx='11' ry='9' fill='transparent' stroke='%23333' stroke-width='1.5'/%3E%3Ccircle cx='46' cy='78' r='2' fill='transparent' stroke='%23333' stroke-width='0.7'/%3E%3Ccircle cx='53' cy='83' r='2.5' fill='transparent' stroke='%23333' stroke-width='0.7'/%3E%3Cellipse cx='50' cy='76' rx='1.5' ry='1' fill='transparent' stroke='%23333' stroke-width='0.7'/%3E%3Cpath d='M45,82 Q50,84 55,82' fill='transparent' stroke='%23333' stroke-width='0.7' stroke-opacity='0.8'/%3E%3C/svg%3E");
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-}
-
-@layer utilities {
-    .terminal-glow {
-        text-shadow: 0 0 10px #00ff9540;
+@layer components {
+    .text-theme {
+        @apply text-[color:var(--orbital-text)];
     }
 
-    .terminal-border-glow {
-        box-shadow: 0 0 5px #00ff9530;
+    .bg-theme {
+        @apply bg-[color:var(--orbital-bg)];
+    }
+
+    .taskbar-bg {
+        @apply bg-[color:var(--orbital-taskbar)];
+    }
+
+    .border-theme {
+        @apply border-[color:var(--orbital-border)];
+    }
+
+    .accent-bg {
+        @apply bg-[color:var(--orbital-accent)];
+    }
+
+    .terminal-glow {
+        text-shadow: 0 0 10px var(--orbital-glow);
     }
 
     .window-shadow {
+        @apply shadow;
         box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 8px 32px -8px rgba(0, 0, 0, 0.3);
     }
 
-    .dark .window-shadow {
-        box-shadow: 0 0 0 1px rgba(0, 255, 149, 0.3), 0 8px 32px -8px rgba(0, 0, 0, 0.5);
+    .show {
+        display: inherit !important;
     }
-}
 
-body {
-    @apply font-mono bg-os-bg text-os-text dark:bg-terminal-bg dark:text-terminal-text min-h-screen transition-colors duration-200;
-}
+    .hide {
+        display: none !important;
+    }
 
-.app-widget {
-    @apply w-full mx-auto;
+    .form-input {
+        @apply w-full px-3 py-2 rounded border transition-all;
+        background-color: white;
+        border-color: var(--orbital-border);
+    }
 
-    &.hide {
+    .form-input.error {
+        border-color: var(--alert-error);
+    }
+
+    .form-input.warning {
+        border-color: var(--alert-warning);
+    }
+
+    .form-button {
+        @apply px-4 py-2 text-sm font-medium rounded transition;
+    }
+
+    .form-button-primary {
+        background-color: var(--orbital-accent);
+        color: var(--orbital-text);
+    }
+
+    .form-button-secondary {
+        border: 1px solid var(--orbital-border);
+    }
+
+    .helper-text {
+        font-size: 0.6rem;
+        margin-top: 0.25rem;
+    }
+
+    .helper-text.error {
+        color: var(--alert-error);
+    }
+
+    .helper-text.warning {
+        color: var(--alert-warning);
+    }
+
+    .loading-widget {
+        @apply absolute inset-0 flex flex-col justify-center items-center;
+    }
+
+    .loading-widget .spinner {
+        animation: spin 2s linear infinite;
+        @apply animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500/75;
+    }
+
+    .loading-widget .loading-text {
+        @apply mt-4 text-theme font-semibold;
+    }
+
+    .loading-widget.hide {
         @apply hidden;
-    }
-
-    &.show {
-        @apply block;
     }
 }
 
@@ -76,299 +122,31 @@ body {
     }
 }
 
-.loading-widget {
-    @apply absolute inset-0 flex flex-col justify-center items-center;
-
-    .spinner {
-        animation: spin 2s linear infinite; /* Fallback animation */
-        @apply animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500/75;
-    }
-
-    .loading-text {
-        @apply mt-4 text-os-text font-semibold;
-    }
-
-    &.hide {
-        @apply hidden;
-    }
+body {
+    @apply font-mono bg-theme text-theme min-h-screen transition-colors duration-200;
 }
 
-
-#orbital {
-    [data-dock="dashboard"] {
-        @apply flex-1 p-6 relative bg-os-bg dark:bg-terminal-bg;
-    }
-
-    #overlayPlaceholder {
-        @apply fixed inset-0 bottom-12 bg-os-bg/50 dark:bg-terminal-bg/80 backdrop-blur-sm z-50;
-
-        &.hide {
-            @apply hidden;
-        }
-    }
-
-    #taskbarPlaceholder {
-        @apply z-[100];
-    }
-}
-
-#dashboard {
-    [data-item="loading"] {
-        &.hide {
-            @apply hidden;
-        }
-    }
-
-    [data-item="dashboard"] {
-        &.hide {
-            @apply hidden;
-        }
-    }
-}
-
-.overlay {
-    &.small {
-        @apply absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white dark:bg-terminal-bg window-shadow rounded-lg flex-col;
-    }
-
-    &.large {
-        @apply absolute top-6 left-6 right-6 bottom-6 bg-white dark:bg-terminal-bg rounded-md flex flex-col window-shadow z-10
-    }
-
-    &.hide {
-        @apply hidden;
-    }
-
-    &.show {
-        @apply flex;
-    }
-
-    .header {
-        @apply bg-os-taskbar dark:bg-terminal-taskbar p-2 border-b border-os-border dark:border-terminal-border flex justify-between items-center rounded-t-lg;
-
-        .title {
-            @apply text-sm opacity-70 dark:terminal-glow;
-        }
-    }
-
-    .body {
-        @apply p-6;
-    }
-}
-
-#taskbar {
-    @apply h-12 bg-os-taskbar dark:bg-terminal-taskbar border-t border-os-border dark:border-terminal-border flex items-center justify-between px-1;
-
-    .systemTray {
-        @apply flex items-center space-x-4 px-4 text-sm;
-
-        .clock {
-            @apply opacity-70 dark:text-terminal-text dark:terminal-glow;
-        }
-    }
-
-    #taskbarStartContent {
-        @apply absolute bottom-12 left-0 w-64 bg-white dark:bg-terminal-taskbar border border-os-border dark:border-terminal-border rounded-t-lg shadow-lg;
-
-        &.hide {
-            @apply hidden;
-        }
-
-        .header {
-            @apply bg-os-accent dark:bg-terminal-accent p-3 rounded-t-lg;
-        }
-
-    }
-}
-
-.app-group {
-    position: relative;
-}
-
-.group-icon {
-    position: relative;
-    overflow: hidden;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.group-icon::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 70%);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.group-icon:hover::before {
-    opacity: 1;
-}
-
-.group-icon-container {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
-}
-
-.group-badge {
-    position: absolute;
-    bottom: -2px;
-    right: -2px;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 8px;
-    color: white;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.mini-apps-indicator {
-    position: absolute;
-    bottom: -4px;
-    right: -4px;
-    display: flex;
-    gap: 1px;
-}
-
-.mini-app-dot {
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-}
-
-@keyframes panelFadeIn {
-    from {
-        opacity: 0;
-        transform: scale(0.95);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-
-.app-group-panel {
-    transform-origin: top left;
-    animation: panelFadeIn 0.2s ease forwards;
-}
-
-.icon-app {
-    background: #e9ecef;
-    border: 1px solid rgba(26, 32, 44, 0.1);
-    box-shadow: 0 1px 2px rgba(26, 32, 44, 0.05);
-}
-
-.form-input {
-    width: 100%;
-    padding: 0.5rem 0.75rem;
-    background-color: white;
-    border: 1px solid var(--os-border);
-    border-radius: 0.125rem;
-    transition: all 150ms;
-}
-
-.form-input:focus {
-    outline: none;
-    ring: 2px;
-    ring-color: var(--os-accent);
-}
-
-.form-input.error {
-    border-color: var(--alert-error);
-}
-
-.form-input.warning {
-    border-color: var(--alert-warning);
-}
-
-.form-button {
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    border-radius: 0.125rem;
-    transition: all 150ms;
-}
-
-.form-button-primary {
-    background-color: var(--os-accent);
-    color: var(--os-text);
-}
-
-.form-button-primary:hover {
-    opacity: 0.8;
-}
-
-.form-button-secondary {
-    border: 1px solid var(--os-border);
-}
-
-.form-button-secondary:hover {
-    background-color: rgba(226, 232, 240, 0.1);
-}
-
-.helper-text {
-    font-size: 0.6rem;
-    margin-top: 0.25rem;
-}
-
-.helper-text.error {
-    color: var(--alert-error);
-}
-
-.helper-text.warning {
-    color: var(--alert-warning);
-}
-
-
-/* Dark mode colors */
 .dark {
-    .icon-app {
-        background: rgba(15, 23, 42, 0.6);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), inset 0 0 0 1px rgba(42, 157, 143, 0.1);
+    --orbital-bg: #0a1322;
+    --orbital-taskbar: #0f172a;
+    --orbital-accent: #1e293b;
+    --orbital-accent-rgb: 30, 41, 59; /* RGB for #1e293b */
+    --orbital-border: #00ff9580;
+    --orbital-text: #00ff95;
+    --orbital-glow: #00ff9520;
+
+    .form-button-primary {
+        background-color: var(--orbital-accent);
+        color: var(--orbital-text);
     }
 
-    .group-icon::before {
-        background: radial-gradient(circle at center, rgba(42, 157, 143, 0.1) 0%, rgba(42, 157, 143, 0) 70%);
+    .form-button-secondary {
+        border-color: var(--orbital-border);
     }
 
     .form-input {
         background-color: rgba(30, 41, 59, 0.2);
-        border-color: var(--terminal-border);
-    }
-
-    .form-input:focus {
-        ring-color: rgba(0, 255, 149, 0.3);
-    }
-
-    .form-input.error {
-        border-color: rgba(239, 68, 68, 0.5);
-    }
-
-    .form-input.warning {
-        border-color: rgba(245, 158, 11, 0.5);
-    }
-
-    .form-button-primary {
-        background-color: var(--terminal-accent);
-        color: var(--terminal-text);
-    }
-
-    .form-button-secondary {
-        border-color: var(--terminal-border);
-    }
-
-    .form-button-secondary:hover {
-        background-color: rgba(30, 41, 59, 0.1);
+        border-color: var(--orbital-border);
     }
 
     .helper-text.error {
@@ -378,4 +156,222 @@ body {
     .helper-text.warning {
         color: rgba(245, 158, 11, 0.9);
     }
+}
+
+@layer components {
+    .overlay {
+        @apply flex flex-col;
+    }
+
+    .overlay.small {
+        @apply absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white dark:bg-[var(--orbital-bg)] window-shadow rounded-lg;
+    }
+
+    .overlay.large {
+        @apply absolute top-6 left-6 right-6 bottom-6 bg-white dark:bg-[var(--orbital-bg)] rounded-md flex window-shadow z-10;
+    }
+
+    .overlay.hide {
+        @apply hidden;
+    }
+
+    .overlay.show {
+        @apply flex;
+    }
+
+    .overlay .header {
+        @apply [background-color:var(--orbital-taskbar)] p-2 border-b border-[var(--orbital-border)] flex justify-between items-center rounded-t-lg;
+    }
+
+    .overlay .header .title {
+        @apply text-sm opacity-70;
+        color: var(--orbital-text);
+        text-shadow: 0 0 10px var(--orbital-glow);
+    }
+
+    .overlay .body {
+        @apply p-6;
+    }
+
+    .dark {
+        .overlay {
+            box-shadow: 0 0 0 1px rgba(0, 255, 149, 0.2),
+            0 12px 24px -8px rgba(0, 255, 149, 0.25),
+            0 4px 8px rgba(0, 0, 0, 0.5);
+        }
+    }
+}
+
+@layer components {
+    .overlay-placeholder {
+        @apply fixed inset-0 bottom-12 backdrop-blur-sm z-50;
+        background-color: var(--orbital-bg);
+    }
+
+    .dark {
+        .overlay-placeholder {
+            background-color: rgba(10, 19, 34, 0.8);
+        }
+    }
+}
+
+@layer components {
+    .taskbar-placeholder {
+        @apply z-[100];
+    }
+
+    .taskbar {
+        @apply h-12 bg-[color:var(--orbital-taskbar)] border-t border-[color:var(--orbital-border)] flex items-center justify-between px-1;
+    }
+
+    .taskbar-start {
+        @apply absolute bottom-12 left-0 w-64 bg-white border border-[color:var(--orbital-border)] rounded-t-lg shadow-lg;
+    }
+
+    .taskbar-start.hide {
+        @apply hidden;
+    }
+
+    .taskbar-start .header {
+        @apply p-3 rounded-t-lg;
+        background-color: var(--orbital-accent);
+    }
+
+    .system-tray {
+        @apply flex items-center space-x-4 px-4 text-sm;
+    }
+
+    .clock {
+        @apply opacity-70;
+        color: var(--orbital-text);
+    }
+
+    .taskbar-app {
+        @apply inline-block px-3 py-1 text-sm;
+        background-color: rgba(var(--orbital-accent-rgb), 0.5);
+        color: var(--orbital-text);
+        text-shadow: 0 0 10px var(--orbital-glow);
+    }
+
+    .dark {
+        .taskbar {
+            background-color: var(--orbital-taskbar);
+            border-color: var(--orbital-border);
+        }
+
+        .taskbar-start {
+            background-color: var(--orbital-taskbar);
+            border-color: var(--orbital-border);
+        }
+
+        .taskbar-start .header {
+            background-color: var(--orbital-accent);
+        }
+
+        .clock {
+            color: var(--orbital-text);
+            text-shadow: 0 0 10px var(--orbital-glow);
+        }
+
+        .taskbar-app {
+            color: var(--orbital-text);
+            background-color: var(--orbital-accent);
+            text-shadow: 0 0 10px var(--orbital-glow);
+        }
+    }
+}
+
+@layer components {
+    .app-icon {
+        @apply transition-all hover:scale-105 rounded-md shadow flex flex-col items-center justify-center w-20 h-20 p-3;
+    }
+
+    .app-icon span {
+        @apply text-[12px] font-medium text-theme mt-1;
+    }
+
+    .group-icon {
+        @apply transition-all hover:scale-105 rounded-md shadow flex flex-col items-center justify-center w-20 h-20 p-3;
+    }
+
+    .icon-wrapper {
+        @apply w-12 h-12 flex items-center justify-center rounded-md border;
+        background-color: var(--orbital-accent);
+        border-color: var(--orbital-border);
+    }
+
+    .app-group-panel {
+        @apply absolute left-0 top-full mt-2 w-64 p-3 rounded-md shadow-lg border bg-theme z-20;
+        border-color: var(--orbital-border);
+    }
+
+    .group-title {
+        @apply text-xs font-medium flex items-center gap-2 text-theme mb-1;
+    }
+
+    .app-label {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 4.5rem;
+        text-align: center;
+    }
+
+    .group-label {
+        @apply text-[12px] font-medium text-theme mt-1 app-label;
+    }
+
+    .dark {
+        .icon-wrapper {
+            background-color: var(--orbital-accent);
+            border-color: var(--orbital-border);
+        }
+
+        .app-group-panel {
+            background-color: var(--orbital-bg);
+            border-color: var(--orbital-border);
+        }
+
+        .group-title {
+            color: var(--orbital-text);
+            text-shadow: 0 0 6px var(--orbital-glow);
+        }
+    }
+}
+
+/* Mobile support */
+@layer components {
+  @media (max-width: 480px) {
+    [data-dock="appsList"] {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+      justify-items: center;
+    }
+
+    .app-icon,
+    .group-icon {
+      width: 4.5rem;
+      height: 4.5rem;
+      padding: 0.5rem;
+    }
+
+    .icon-wrapper {
+      width: 2.5rem;
+      height: 2.5rem;
+    }
+
+    .app-icon span,
+    .group-icon span {
+      display: block;
+      max-width: 4.5rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: center;
+      font-size: 0.675rem;
+      font-weight: 500;
+      margin-top: 0.25rem;
+    }
+  }
 }
