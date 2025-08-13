@@ -11,7 +11,7 @@ import (
 	"strconv"
 )
 
-//go:embed web/*
+//go:embed all:web/*
 var staticDir embed.FS
 
 type Config struct {
@@ -39,10 +39,6 @@ func (n *Orbital) Start() error {
 
 	n.log.Info("Starting Orbital", "addr", fmt.Sprintf("%s:%d", n.ip, n.port))
 
-	//if err := n.client.ListenAndServeTLS("", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
-	//	return fmt.Errorf("failed to start HTTP server: %w", err)
-	//}
-
 	if err := n.client.ListenAndServe(); err != nil {
 		return fmt.Errorf("failed to start HTTP server: %w", err)
 	}
@@ -65,15 +61,9 @@ func (n *Orbital) init() error {
 
 	handler := corsMiddleware(mux)
 
-	//tlsCfg, err := tlsConfig(n.cfg.Datapath)
-	//if err != nil {
-	//	return err
-	//}
-
 	n.client = &http.Server{
 		Addr:    fmt.Sprintf("%s:%s", n.ip, strconv.Itoa(n.port)),
 		Handler: handler,
-		//TLSConfig: tlsCfg,
 	}
 
 	return nil
