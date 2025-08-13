@@ -15,7 +15,6 @@ vars:
   LDFLAGS: -ldflags="-s -w -X 'main.Version={{.VERSION_TAG}}' -X 'main.Compile={{.VERSION_COMPILE}}' -X 'main.Branch={{.VERSION_BRANCH}}'"
 
 tasks:
-
   syscheck:
     desc: "Check if dependency requirements for dev"
     silent: true
@@ -37,6 +36,7 @@ tasks:
         else
           echo "- Go version $go_version is OK.";
         fi
+
       - |
         command -v docker >/dev/null || { 
           echo "ERROR: docker is not installed.";
@@ -44,6 +44,7 @@ tasks:
           exit 1;
         }
       - echo "- Docker is installed."
+
       - |
         command -v npm >/dev/null || { 
           echo "ERROR: npm is not installed.";
@@ -54,6 +55,7 @@ tasks:
       - echo "All required software is installed!"
 
   build:wasm:
+    desc: "Build the wasm file"
     silent: true
     env:
       GOOS: js
@@ -64,13 +66,15 @@ tasks:
       - cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" orbital/web/wasm_exec.js
 
   build:css:
+    desc: "Generate CSS sources"
     silent: true
     vars:
       proj_dir: '{{.PWD}}'
     cmds:
-      - (cd web/tailwind && npx tailwindcss -i ./orbital.refactored.css -o {{.proj_dir}}/orbital/web/orbital.css)
+      - (cd web/tailwind && npx tailwindcss -i ./orbital.css -o {{.proj_dir}}/orbital/web/orbital.css)
 
   wasm:
+    desc: "Generate wasm bundle (wasm + css)"
     cmds:
       - task: build:css
       - task: build:wasm
@@ -88,3 +92,9 @@ tasks:
         echo "- Compiled on: {{.VERSION_COMPILE}}"
         echo "- Branch: {{.VERSION_BRANCH}}"
       - go build {{.GCFLAGS}} {{.LDFLAGS}} -o bin/orbital ./main.go
+        
+        
+        
+        
+        
+        
