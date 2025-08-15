@@ -76,7 +76,7 @@ func (comp *TaskbarComponent) uiEventStartOrbital(_ js.Value, args []js.Value) a
 }
 
 // uiEventStartOrbitalHide close menu if clicking outside
-func (comp *TaskbarComponent) uiEventStartOrbitalHide(this js.Value, args []js.Value) interface{} {
+func (comp *TaskbarComponent) uiEventStartOrbitalHide(_ js.Value, args []js.Value) interface{} {
 	e := args[0]
 	target := e.Get("target")
 
