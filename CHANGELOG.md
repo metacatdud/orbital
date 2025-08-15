@@ -1,3 +1,25 @@
+## v0.4.0 (2025-08-15)
+
+### Feat
+
+- add sub-apps support
+- update css
+- add app launcher mounting and actions
+- add app table, model and API
+
+### Fix
+
+- typo in constant name
+
+### Refactor
+
+- wasm file loading process
+- add fontawesome offline
+- css stylesheet.
+- overlay data source passing
+- template loading process
+- token selection
+
 ## v0.3.0 (2025-06-06)
 
 ### Feat
