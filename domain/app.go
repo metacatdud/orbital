@@ -4,20 +4,25 @@ import (
 	"database/sql"
 	"fmt"
 	database "orbital/pkg/db"
+	"time"
 )
 
 type App struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Icon        string   `json:"icon"`
-	Version     string   `json:"version"`
-	Description string   `json:"description"`
-	Namespace   string   `json:"namespace"`
-	OwnerKey    string   `json:"ownerKey"`
-	OwnerURL    string   `json:"ownerUrl"`
-	Labels      []string `json:"labels"`
-	ParentID    string   `json:"parentId"`
-	IsExternal  bool     `json:"isExternal"`
+	ID          string     `json:"id"`
+	Name        string     `json:"name"`
+	Icon        string     `json:"icon"`
+	Version     string     `json:"version"`
+	Description string     `json:"description"`
+	Namespace   string     `json:"namespace"`
+	OwnerKey    string     `json:"ownerKey"`
+	OwnerURL    string     `json:"ownerUrl"`
+	Labels      []string   `json:"labels"`
+	ParentID    string     `json:"parentId"`
+	IsExternal  bool       `json:"isExternal"`
+	IsEnabled   bool       `json:"isEnabled"`
+	CreatedAt   *time.Time `json:"createdAt,omitempty"`
+	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
+	DeletedAt   *time.Time `json:"deletedAt,omitempty"`
 }
 
 type appRow struct {
@@ -32,6 +37,10 @@ type appRow struct {
 	Labels      sql.NullString
 	ParentID    sql.NullString
 	IsExternal  sql.NullBool
+	IsEnabled   sql.NullBool
+	CreatedAt   sql.NullTime
+	UpdatedAt   sql.NullTime
+	DeletedAt   sql.NullTime
 }
 
 type Apps []App
@@ -45,14 +54,17 @@ func NewAppRepository(db *database.DB) AppRepository {
 }
 
 func (repo AppRepository) GetByID(id string) (*App, error) {
-	query := `SELECT id, name, version, description, icon, namespace, owner_key, owner_url, labels, parent_id FROM applications WHERE id = ?`
+	query := `SELECT id, name, version, description, icon, namespace, owner_key, owner_url, labels, parent_id, is_external, is_enabled, created_at, updated_at, deleted_at 
+				FROM applications 
+				WHERE id = ? AND (deleted_at IS NULL OR deleted_at = '') AND is_enabled = true`
 	row := repo.db.Client().QueryRow(query, id)
 
 	var appR appRow
 	err := row.Scan(
 		&appR.ID, &appR.Name, &appR.Version, &appR.Description,
 		&appR.Icon, &appR.Namespace, &appR.OwnerKey, &appR.OwnerURL,
-		&appR.Labels, &appR.ParentID, &appR.IsExternal,
+		&appR.Labels, &appR.ParentID, &appR.IsExternal, &appR.IsEnabled,
+		&appR.CreatedAt, &appR.UpdatedAt, &appR.DeletedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to scan user row: %w", err)
@@ -64,7 +76,9 @@ func (repo AppRepository) GetByID(id string) (*App, error) {
 }
 
 func (repo AppRepository) Find() (Apps, error) {
-	query := `SELECT id, name, version, description, icon, namespace, owner_key, owner_url, labels, parent_id FROM applications`
+	query := `SELECT id, name, version, description, icon, namespace, owner_key, owner_url, labels, parent_id, is_external, is_enabled, created_at, updated_at, deleted_at 
+				FROM applications
+				WHERE (deleted_at IS NULL OR deleted_at = '') AND is_enabled = true`
 	rows, err := repo.db.Client().Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query users: %w", err)
@@ -77,7 +91,8 @@ func (repo AppRepository) Find() (Apps, error) {
 		err = rows.Scan(
 			&appR.ID, &appR.Name, &appR.Version, &appR.Description,
 			&appR.Icon, &appR.Namespace, &appR.OwnerKey, &appR.OwnerURL,
-			&appR.Labels, &appR.ParentID, &appR.IsExternal,
+			&appR.Labels, &appR.ParentID, &appR.IsExternal, &appR.IsEnabled,
+			&appR.CreatedAt, &appR.UpdatedAt, &appR.DeletedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan user row: %w", err)
@@ -94,7 +109,10 @@ func (repo AppRepository) Find() (Apps, error) {
 }
 
 func (repo AppRepository) FindOnlyStandalone() (Apps, error) {
-	query := `SELECT id, name, version, description, icon, namespace, owner_key, owner_url, labels, parent_id, is_external FROM applications WHERE parent_id IS NULL`
+	query := `SELECT id, name, version, description, icon, namespace, owner_key, owner_url, labels, parent_id, is_external, is_enabled, created_at, updated_at, deleted_at 
+				FROM applications 
+				WHERE parent_id IS NULL AND (deleted_at IS NULL OR deleted_at = '') AND is_enabled = true`
+
 	rows, err := repo.db.Client().Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query users: %w", err)
@@ -107,7 +125,8 @@ func (repo AppRepository) FindOnlyStandalone() (Apps, error) {
 		err = rows.Scan(
 			&appR.ID, &appR.Name, &appR.Version, &appR.Description,
 			&appR.Icon, &appR.Namespace, &appR.OwnerKey, &appR.OwnerURL,
-			&appR.Labels, &appR.ParentID, &appR.IsExternal,
+			&appR.Labels, &appR.ParentID, &appR.IsExternal, &appR.IsEnabled,
+			&appR.CreatedAt, &appR.UpdatedAt, &appR.DeletedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan user row: %w", err)
@@ -125,7 +144,10 @@ func (repo AppRepository) FindOnlyStandalone() (Apps, error) {
 }
 
 func (repo AppRepository) FindByParentID(parentID string) (Apps, error) {
-	query := `SELECT id, name, version, description, icon, namespace, owner_key, owner_url, labels, parent_id, is_external FROM applications WHERE parent_id = ?`
+	query := `SELECT id, name, version, description, icon, namespace, owner_key, owner_url, labels, parent_id, is_external, is_enabled, created_at, updated_at, deleted_at 
+				FROM applications 
+				WHERE parent_id = ? AND (deleted_at IS NULL OR deleted_at = '') AND is_enabled = true`
+
 	rows, err := repo.db.Client().Query(query, parentID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query users: %w", err)
@@ -138,7 +160,8 @@ func (repo AppRepository) FindByParentID(parentID string) (Apps, error) {
 		err = rows.Scan(
 			&appR.ID, &appR.Name, &appR.Version, &appR.Description,
 			&appR.Icon, &appR.Namespace, &appR.OwnerKey, &appR.OwnerURL,
-			&appR.Labels, &appR.ParentID, &appR.IsExternal,
+			&appR.Labels, &appR.ParentID, &appR.IsExternal, &appR.IsEnabled,
+			&appR.CreatedAt, &appR.UpdatedAt, &appR.DeletedAt,
 		)
 
 		if err != nil {
@@ -156,6 +179,17 @@ func (repo AppRepository) FindByParentID(parentID string) (Apps, error) {
 }
 
 func mapRowToApp(ar appRow) App {
+	var createdAt, updatedAt, deletedAt *time.Time
+	if ar.CreatedAt.Valid {
+		createdAt = &ar.CreatedAt.Time
+	}
+	if ar.UpdatedAt.Valid {
+		updatedAt = &ar.UpdatedAt.Time
+	}
+	if ar.DeletedAt.Valid {
+		deletedAt = &ar.DeletedAt.Time
+	}
+
 	return App{
 		ID:          ar.ID,
 		Name:        nullToString(ar.Name),
@@ -167,6 +201,11 @@ func mapRowToApp(ar appRow) App {
 		OwnerURL:    nullToString(ar.OwnerURL),
 		Labels:      nullToStringSlice(ar.Labels),
 		ParentID:    nullToString(ar.ParentID),
+		IsExternal:  ar.IsExternal.Valid && ar.IsExternal.Bool,
+		IsEnabled:   ar.IsEnabled.Valid && ar.IsEnabled.Bool,
+		CreatedAt:   createdAt,
+		UpdatedAt:   updatedAt,
+		DeletedAt:   deletedAt,
 	}
 }
 

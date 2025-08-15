@@ -153,8 +153,8 @@ func (s *State) setStructObserver(key string, oldValue, newValue any) {
 
 // MergeStateWithData will merge data from state with other data
 // the data from State will be overwritten
-func MergeStateWithData(stateData map[string]interface{}, data ...map[string]interface{}) map[string]interface{} {
-	mergedData := make(map[string]interface{}, len(stateData))
+func MergeStateWithData(stateData map[string]any, data ...map[string]any) map[string]any {
+	mergedData := make(map[string]any, len(stateData))
 	for k, v := range stateData {
 		mergedData[k] = v
 	}

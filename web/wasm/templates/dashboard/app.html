@@ -23,8 +23,7 @@
             <span class="group-label">{{.title}}</span>
         </button>
 
-        <div data-target="{{.id}}"
-             class="app-group-panel">
+        <div data-target="{{.id}}" class="app-group-panel hide">
             <div class="flex justify-between items-center mb-2">
                 <h3 class="group-title">
                     <i class="fas text-theme text-sm {{.icon}}"></i>
@@ -35,16 +34,7 @@
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <div class="grid grid-cols-3 gap-2">
-                {{range $app := .data.Apps}}
-                <button class="app-icon">
-                    <div class="icon-wrapper">
-                        <i class="fas {{$app.Icon}} text-theme text-sm"></i>
-                    </div>
-                    <span class="app-label">{{$app.Name}}</span>
-                </button>
-                {{end}}
-            </div>
+            <div class="grid grid-cols-3 gap-2" data-dock="appsList"></div>
         </div>
     </div>
 </template>

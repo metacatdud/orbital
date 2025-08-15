@@ -14,7 +14,7 @@ type AllDataReq struct {
 
 // SystemInfo basic aggregation struct
 // TODO: Detail this with properties for better experience latter on
-type SystemInfo map[string]interface{}
+type SystemInfo map[string]any
 
 type AllDataResp struct {
 	SystemInfo *SystemInfo            `json:"systemInfo,omitempty"`

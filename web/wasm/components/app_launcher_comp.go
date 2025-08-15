@@ -38,8 +38,9 @@ func NewAppLauncherComponent(di *orbital.Dependency, id RegKey, data service.App
 		events:        di.Events,
 		state:         di.State,
 	}
-	dom.ConsoleLog("ppLauncherComponent:", data.ID, data.Name, namespace)
+
 	comp.bindUIEvents()
+	comp.OnMount(comp.onMountHandler)
 
 	return comp
 }
@@ -99,6 +100,7 @@ func (comp *AppLauncherComponent) Icon() string {
 }
 
 func (comp *AppLauncherComponent) bindUIEvents() {
+
 	comp.AddEventHandler(
 		fmt.Sprintf(`[data-id="%s"][data-action="launchApp"]`, comp.ID()),
 		"click",
@@ -110,6 +112,18 @@ func (comp *AppLauncherComponent) bindUIEvents() {
 		"click",
 		comp.uiEventLaunchGroup,
 	)
+
+	comp.AddEventHandler(
+		fmt.Sprintf(`[data-target="%s"] [data-action="closeGroup"]`, comp.ID()),
+		"click",
+		comp.uiEventLaunchGroupClose,
+	)
+}
+
+func (comp *AppLauncherComponent) onMountHandler() {
+	if len(comp.data.Apps) > 0 {
+		comp.setupChildApps()
+	}
 }
 
 func (comp *AppLauncherComponent) uiEventLaunchApp(_ js.Value, args []js.Value) any {
@@ -130,6 +144,39 @@ func (comp *AppLauncherComponent) uiEventLaunchApp(_ js.Value, args []js.Value) 
 }
 
 func (comp *AppLauncherComponent) uiEventLaunchGroup(_ js.Value, args []js.Value) any {
-	dom.ConsoleLog("Group Apps", comp.data.Apps)
+	e := args[0]
+	e.Call("stopPropagation")
+
+	targetSel := fmt.Sprintf(`[data-target="%s"]`, comp.ID())
+	targetMenu := dom.QuerySelector(targetSel)
+
+	dom.ToggleClass(targetMenu, "hide")
 	return nil
+}
+
+func (comp *AppLauncherComponent) uiEventLaunchGroupClose(_ js.Value, args []js.Value) any {
+	e := args[0]
+	e.Call("stopPropagation")
+
+	targetSel := fmt.Sprintf(`[data-target="%s"]`, comp.ID())
+	targetMenu := dom.QuerySelector(targetSel)
+
+	dom.AddClass(targetMenu, "hide")
+	return nil
+}
+
+func (comp *AppLauncherComponent) setupChildApps() {
+
+	container := comp.GetContainer("appsList")
+	if container.IsNull() {
+		dom.ConsoleError("appsList component container is null", comp.ID())
+		return
+	}
+
+	dom.SetInnerHTML(container, "")
+
+	for _, app := range comp.data.Apps {
+		appLauncher := NewAppLauncherComponent(comp.DI, AppComponentRegKey.WithExtra("-", app.ID), app)
+		appLauncher.Mount(&container)
+	}
 }

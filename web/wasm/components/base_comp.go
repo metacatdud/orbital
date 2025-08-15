@@ -147,7 +147,7 @@ func (comp *BaseComponent) GetContainer(name string) js.Value {
 	return js.Null()
 }
 
-func (comp *BaseComponent) Render(data map[string]interface{}) (string, error) {
+func (comp *BaseComponent) Render(data map[string]any) (string, error) {
 	if comp.tpl == nil {
 		tpl, err := comp.DI.Templates.Get(comp.namespace)
 		if err != nil {
@@ -161,7 +161,7 @@ func (comp *BaseComponent) Render(data map[string]interface{}) (string, error) {
 	if data == nil {
 		data = comp.DI.State.GetAll()
 	}
-
+	dom.ConsoleLog(comp.id, data)
 	if err := comp.tpl.Execute(&buf, data); err != nil {
 		return "", err
 	}

@@ -54,7 +54,7 @@ func (comp *LoginComponent) renderError(errType, msg string) {
 	}
 
 	var buf bytes.Buffer
-	data := map[string]interface{}{"type": errType, "message": msg}
+	data := map[string]any{"type": errType, "message": msg}
 	if err = tpl.Execute(&buf, data); err != nil {
 		dom.ConsoleError("cannot execute template", err.Error())
 		return
