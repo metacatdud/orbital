@@ -1,3 +1,9 @@
+## v0.4.1 (2025-08-19)
+
+### Fix
+
+- ci release commit message
+
 ## v0.4.0 (2025-08-15)
 
 ### Feat
