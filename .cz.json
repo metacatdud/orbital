@@ -3,6 +3,6 @@
     "name": "cz_conventional_commits",
     "version": "0.4.0",
     "tag_format": "v$major.$minor.$patch",
-    "bump_message": "release $current_version -> $new_version"
+    "bump_message": "bump: $current_version -> $new_version"
   }
 }
