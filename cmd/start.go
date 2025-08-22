@@ -16,7 +16,8 @@ import (
 )
 
 var (
-	port int
+	port  int
+	debug bool
 )
 
 func newStartCmd() *cobra.Command {
@@ -28,23 +29,66 @@ func newStartCmd() *cobra.Command {
 
 			cmdHeader("start")
 
+			var logLvl = logger.LevelError
+			if debug {
+				logLvl = logger.LevelDebug
+			}
+
+			fmt.Println("Log LVL: ", logLvl)
+
+			log := logger.New(logLvl, logger.FormatString)
+
 			cfg, err := config.LoadConfig()
 			if err != nil {
+				prompt.Err(prompt.NewLine("cannot load config: %s"), err.Error())
 				return err
 			}
 
-			apiSrv, wsSrv, err := setupAPIServer(cfg)
+			dbConn, err := setupDB(cfg)
 			if err != nil {
-				prompt.Err(prompt.NewLine("cannot start server: %s"), err.Error())
+				prompt.Err(prompt.NewLine("cannot setup db: %s"), err.Error())
 				return err
 			}
 
+			// Repositories
+			appRepo := domain.NewAppRepository(dbConn)
+			userRepo := domain.NewUserRepository(dbConn)
+
+			// Add TCP Server here
+
+			apiSrv := orbital.NewServer(log)
+			wsSrv := orbital.NewWsConn(log)
+
+			// Prepare services
+			authSvc := auth.NewService(auth.Dependencies{
+				Log:      log,
+				UserRepo: &userRepo,
+				Ws:       wsSrv,
+			})
+
+			appsSvc := apps.NewService(apps.Dependencies{
+				Log:     log,
+				AppRepo: &appRepo,
+			})
+
+			machineSvc := machine.NewService(machine.Dependencies{
+				Log: log,
+				Ws:  wsSrv,
+			})
+
+			// Register all service to server
+			auth.RegisterAuthServiceServer(apiSrv, wsSrv, authSvc)
+			apps.RegisterAppsServiceServer(apiSrv, wsSrv, appsSvc)
+			machine.RegisterMachineServiceServer(apiSrv, wsSrv, machineSvc)
+
+			// Boot Orbital
 			orbitalCfg := orbital.Config{
 				ApiServer: apiSrv,
 				WsServer:  wsSrv,
 				Ip:        fmt.Sprintf("[%s]", cfg.BindIP),
 				Cfg:       cfg,
 				Port:      port,
+				Logger:    log,
 			}
 
 			orbitalNode := orbital.New(orbitalCfg)
@@ -56,49 +100,18 @@ func newStartCmd() *cobra.Command {
 	}
 
 	startCmd.Flags().IntVarP(&port, "port", "p", 8080, "Service port")
+	startCmd.Flags().BoolVarP(&debug, "debug", "", false, "Debug mode")
 
 	return startCmd
 }
 
-func setupAPIServer(cfg *config.Config) (*orbital.Server, *orbital.WsConn, error) {
+func setupDB(cfg *config.Config) (*db.DB, error) {
 	dbPath := filepath.Join(cfg.OrbitalRootDir(), "data")
 
 	dbConn, err := db.NewDB(dbPath)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	// Dependencies and repositories
-	log := logger.New(logger.LevelDebug, logger.FormatString)
-
-	appRepo := domain.NewAppRepository(dbConn)
-	userRepo := domain.NewUserRepository(dbConn)
-
-	// Prepare servers
-	apiSrv := orbital.NewServer(log)
-	wsSrv := orbital.NewWsConn(log)
-
-	// Prepare services
-	authSvc := auth.NewService(auth.Dependencies{
-		Log:      log,
-		UserRepo: &userRepo,
-		Ws:       wsSrv,
-	})
-
-	appsSvc := apps.NewService(apps.Dependencies{
-		Log:     log,
-		AppRepo: &appRepo,
-	})
-
-	machineSvc := machine.NewService(machine.Dependencies{
-		Log: log,
-		Ws:  wsSrv,
-	})
-
-	// Register all service to server
-	auth.RegisterAuthServiceServer(apiSrv, wsSrv, authSvc)
-	apps.RegisterAppsServiceServer(apiSrv, wsSrv, appsSvc)
-	machine.RegisterMachineServiceServer(apiSrv, wsSrv, machineSvc)
-
-	return apiSrv, wsSrv, nil
+	return dbConn, nil
 }

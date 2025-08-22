@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"crypto/ecdsa"
-	"crypto/x509"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -13,7 +11,6 @@ import (
 	"net"
 	"orbital/config"
 	"orbital/domain"
-	"orbital/pkg/certificate"
 	"orbital/pkg/cryptographer"
 	"orbital/pkg/db"
 	"orbital/pkg/prompt"
@@ -125,35 +122,6 @@ func newInitCmd(deps Dependencies) *cobra.Command {
 				return err
 			}
 			prompt.Bold(prompt.ColorGreen, prompt.NewLine("OK ----"))
-
-			var (
-				caCert *x509.Certificate
-				caKey  *ecdsa.PrivateKey
-			)
-
-			prompt.Bold(prompt.ColorYellow, prompt.NewLine("[ Generate CA Certificate ]"))
-			certsPath := filepath.Join(orbitalCfg.OrbitalRootDir(), "certs", "ca")
-			if !isReinit {
-				caCert, caKey, err = certificate.GenerateCA(certsPath)
-				if err != nil {
-					return err
-				}
-				prompt.Bold(prompt.ColorGreen, "OK ----")
-			} else {
-				prompt.Bold(prompt.ColorYellow, " Skipped")
-			}
-
-			if caCert == nil && caKey == nil {
-				caCert, caKey, err = certificate.LoadCA(certsPath)
-				if err != nil {
-					return err
-				}
-			}
-
-			serverCertsPath := filepath.Join(orbitalCfg.OrbitalRootDir(), "certs")
-			if err = certificate.GenerateServerCert(caCert, caKey, serverCertsPath, ip, "orbital.local"); err != nil {
-				return err
-			}
 
 			prompt.Bold(prompt.ColorYellow, prompt.NewLine("[ Config details ]"))
 			fmt.Println()
