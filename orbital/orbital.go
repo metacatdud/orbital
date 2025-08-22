@@ -1,7 +1,6 @@
 package orbital
 
 import (
-	"crypto/tls"
 	"embed"
 	"fmt"
 	"io/fs"
@@ -33,20 +32,7 @@ type Orbital struct {
 }
 
 func (n *Orbital) Start() error {
-	if err := n.init(); err != nil {
-		return err
-	}
 
-	n.log.Info("Starting Orbital", "addr", fmt.Sprintf("%s:%d", n.ip, n.port))
-
-	if err := n.client.ListenAndServe(); err != nil {
-		return fmt.Errorf("failed to start HTTP server: %w", err)
-	}
-
-	return nil
-}
-
-func (n *Orbital) init() error {
 	staticFiles, err := fs.Sub(staticDir, "web")
 	if err != nil {
 		return err
@@ -66,6 +52,12 @@ func (n *Orbital) init() error {
 		Handler: handler,
 	}
 
+	n.log.Info("Starting Orbital", "addr", fmt.Sprintf("%s:%d", n.ip, n.port))
+
+	if err := n.client.ListenAndServe(); err != nil {
+		return fmt.Errorf("failed to start HTTP server: %w", err)
+	}
+
 	return nil
 }
 
@@ -80,22 +72,4 @@ func New(cfg Config) *Orbital {
 		log:       lg,
 		port:      cfg.Port,
 	}
-}
-
-func tlsConfig(dataPath string) (*tls.Config, error) {
-	certFile := fmt.Sprintf("%s/orbital/certs/server.crt", dataPath)
-	keyFile := fmt.Sprintf("%s/orbital/certs/server.key", dataPath)
-
-	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load certificates: %v", err)
-	}
-
-	// Configure TLS
-	tlsCfg := &tls.Config{
-		Certificates: []tls.Certificate{cert},
-		MinVersion:   tls.VersionTLS12,
-	}
-
-	return tlsCfg, nil
 }
