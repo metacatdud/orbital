@@ -19,6 +19,7 @@ type Config struct {
 	Ip        string
 	Port      int
 	Cfg       *config.Config
+	Logger    *logger.Logger
 }
 
 type Orbital struct {
@@ -62,7 +63,15 @@ func (n *Orbital) Start() error {
 }
 
 func New(cfg Config) *Orbital {
-	lg := logger.New(logger.LevelDebug, logger.FormatString)
+	var lg *logger.Logger
+
+	if cfg.Logger != nil {
+		lg = cfg.Logger
+	}
+
+	if lg == nil {
+		lg = logger.New(logger.LevelDebug, logger.FormatString)
+	}
 
 	return &Orbital{
 		apiServer: cfg.ApiServer,
