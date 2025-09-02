@@ -27,14 +27,15 @@ tasks:
         }
 
       - |
-        go_version=$(go version | awk '{print $3}' | sed 's/go//') &&
-        required_version="1.24" &&
-        if [[ "$go_version" != "$required_version"* ]]; then
-          echo "ERROR: Go version $required_version is required, but found $go_version.";
-          echo "Please upgrade your Go installation. Ref https://golang.org/dl/";
-          exit 1;
+        go_version=$(go version | awk '{print $3}' | sed 's/go//')
+        required_version="1.24"
+    
+        if [ "$(printf '%s\n' "$required_version" "$go_version" | sort -V | head -n1)" != "$required_version" ]; then
+          echo "ERROR: Go version $required_version or higher is required, but found $go_version."
+          echo "Please upgrade your Go installation. Ref https://golang.org/dl/"
+          exit 1
         else
-          echo "- Go version $go_version is OK.";
+          echo "- Go is installed. Ver: $go_version"
         fi
 
       - |
@@ -79,15 +80,15 @@ tasks:
       - task: build:css
       - task: build:wasm
 
-  orbital:linux:
-    desc: Build Orbital for Linux
+  orbital:local:
+    desc: Build Orbital for Local environment (auto-detected)
     silent: true
     env:
-      GOOS: linux
-      GOARCH: amd64
+      GOOS: "{{OS}}"
+      GOARCH: "{{ARCH}}"
     cmds:
       - |
-        echo "- Building for Linux..."
+        echo "- Building for {{OS}}/{{ARCH}}..."
         echo "- Version: {{.VERSION_VERSION}}"
         echo "- Compiled on: {{.VERSION_COMPILE}}"
         echo "- Branch: {{.VERSION_BRANCH}}"
