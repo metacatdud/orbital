@@ -19,7 +19,7 @@ func writeTLVtoBuffer(buf *bytes.Buffer, fieldType byte, data []byte) error {
 	}
 
 	length := uint32(len(data))
-	lengthBytes := make([]byte, 4) // 4 bytes hold for uint32
+	lengthBytes := make([]byte, 4)
 	binary.LittleEndian.PutUint32(lengthBytes, length)
 	if _, err := buf.Write(lengthBytes); err != nil {
 		return err

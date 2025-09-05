@@ -22,24 +22,9 @@ func (pk *PublicKey) String() string {
 	return hex.EncodeToString(pk.key[:])
 }
 
-func NewPublicKeyFromString(publicKeyHex string) (*PublicKey, error) {
-	publicKeyBytes, err := hex.DecodeString(publicKeyHex)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(publicKeyBytes) != ed25519.PublicKeySize {
-		return nil, fmt.Errorf("%w:[%d]", ErrPublicKeySize, len(publicKeyBytes))
-	}
-
-	pubKey := ed25519.PublicKey(publicKeyBytes)
-
-	return &PublicKey{key: pubKey}, nil
-}
-
 type PrivateKey struct {
 	seed  []byte
-	nonce [32]byte
+	nonce [32]byte // Not in use for now
 }
 
 // PublicKey returns the public key corresponding to the secret key
@@ -65,16 +50,7 @@ func GenerateKeysPair() (*PublicKey, *PrivateKey, error) {
 		return nil, nil, err
 	}
 
-	// Create nonce for PrivateKey
-	var nonce [32]byte
-	_, err = rand.Read(nonce[:])
-	if err != nil {
-		return nil, nil, err
-	}
-
-	publicKey := privateKey.PublicKey()
-
-	return publicKey, &PrivateKey{seed: privateKey.Bytes(), nonce: nonce}, nil
+	return privateKey.PublicKey(), privateKey, nil
 }
 
 // NewPrivateKeyFromSeed creat a private key from a seed
@@ -83,14 +59,15 @@ func NewPrivateKeyFromSeed(seed []byte) (*PrivateKey, error) {
 		return nil, fmt.Errorf("%w:[%d]", ErrSeedSize, len(seed))
 	}
 
+	ed25519Sk := ed25519.NewKeyFromSeed(seed)
+
 	// Create nonce for PrivateKey
 	var nonce [32]byte
-	_, err := rand.Read(nonce[:])
-	if err != nil {
+	if _, err := rand.Read(nonce[:]); err != nil {
 		return nil, err
 	}
 
-	return &PrivateKey{seed: seed, nonce: nonce}, nil
+	return &PrivateKey{seed: ed25519Sk.Seed(), nonce: nonce}, nil
 }
 
 // NewPrivateKeyFromString creat a private key from a string
@@ -105,7 +82,7 @@ func NewPrivateKeyFromString(privateKey string) (*PrivateKey, error) {
 
 // NewPrivateKey generates a random seed key
 func NewPrivateKey() (*PrivateKey, error) {
-	seed := make([]byte, 32)
+	seed := make([]byte, ed25519.SeedSize)
 	if _, err := rand.Read(seed); err != nil {
 		return nil, err
 	}
