@@ -8,11 +8,11 @@ import (
 type Timestamp int64
 
 func Now() Timestamp {
-	return Timestamp(time.Now().UnixNano() / 1000)
+	return Timestamp(time.Now().UnixMicro())
 }
 
 func (t Timestamp) Time() time.Time {
-	return time.Unix(int64(t), 0)
+	return time.UnixMicro(int64(t))
 }
 
 func (t Timestamp) Bytes() []byte {
