@@ -42,7 +42,7 @@ func (repo UserRepository) Save(u User) error {
 	}
 
 	query := `INSERT INTO users (id, name, pubkey, access) VALUES (?, ?, ?, ?)`
-	_, err := repo.db.Client().Exec(query, args)
+	_, err := repo.db.Client().Exec(query, args...)
 	if err != nil {
 		return fmt.Errorf("failed to save user: %w", err)
 	}
@@ -117,5 +117,10 @@ func mapRowToUser(ur usersRow) User {
 }
 
 func mapUserToRow(user User) usersRow {
-	return usersRow{}
+	return usersRow{
+		ID:     user.ID,
+		Name:   stringToNull(user.Name),
+		PubKey: stringToNull(user.PubKey),
+		Access: stringToNull(user.Access),
+	}
 }
