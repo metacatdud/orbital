@@ -8,6 +8,7 @@ var (
 	ErrMetadataTagMarshal = errors.New("metadata tags marshal error")
 	ErrMessageSizeExceed  = errors.New("message exceed allowed limit")
 	ErrSeedSize           = errors.New("invalid seed size")
-	ErrPublicKeySize      = errors.New("invalid public key size")
 	ErrInvalidKeySize     = errors.New("invalid key size")
+	ErrSignMessage        = errors.New("sign message failed")
+	ErrPubKeyMessage      = errors.New("cannot create public key bytes")
 )

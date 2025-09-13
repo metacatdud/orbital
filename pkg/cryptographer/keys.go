@@ -11,81 +11,87 @@ type PublicKey struct {
 	key ed25519.PublicKey
 }
 
-// Compress compresses the public key to a [32]byte format
-func (pk *PublicKey) Compress() [32]byte {
-	var compressed [32]byte
-	copy(compressed[:], pk.key)
-	return compressed
+func (pk PublicKey) Bytes() []byte {
+	if pk.key == nil {
+		return nil
+	}
+	cp := make([]byte, ed25519.PublicKeySize)
+	copy(cp, pk.key)
+	return cp
 }
 
-func (pk *PublicKey) String() string {
-	return hex.EncodeToString(pk.key[:])
+func (pk PublicKey) ToHex() string {
+	return hex.EncodeToString(pk.key)
 }
 
 type PrivateKey struct {
-	seed  []byte
-	nonce [32]byte // Not in use for now
+	key ed25519.PrivateKey
 }
 
-// PublicKey returns the public key corresponding to the secret key
-func (privateKey *PrivateKey) PublicKey() *PublicKey {
-	privateKeyGen := ed25519.NewKeyFromSeed(privateKey.seed)
-	pubKey := privateKeyGen.Public().(ed25519.PublicKey)
-
-	return &PublicKey{key: pubKey}
+func (sk PrivateKey) Bytes() []byte {
+	if sk.key == nil {
+		return nil
+	}
+	cp := make([]byte, ed25519.PrivateKeySize)
+	copy(cp, sk.key)
+	return cp
 }
 
-func (privateKey *PrivateKey) Bytes() []byte {
-	return privateKey.seed
+func (sk PrivateKey) Seed() []byte {
+	if sk.key == nil || len(sk.key) != ed25519.PrivateKeySize {
+		return nil
+	}
+	cp := make([]byte, ed25519.SeedSize)
+	copy(cp, sk.key.Seed())
+	return cp
 }
 
-func (privateKey *PrivateKey) String() string {
-	return hex.EncodeToString(privateKey.seed)
+func (sk PrivateKey) PublicKey() PublicKey {
+	if sk.key == nil {
+		return PublicKey{}
+	}
+
+	pk := sk.key.Public().(ed25519.PublicKey)
+
+	return PublicKey{key: pk}
 }
 
 // GenerateKeysPair generates a new public and private key pair
-func GenerateKeysPair() (*PublicKey, *PrivateKey, error) {
-	privateKey, err := NewPrivateKey()
+func GenerateKeysPair() (PublicKey, PrivateKey, error) {
+	pk, sk, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
-		return nil, nil, err
+		return PublicKey{}, PrivateKey{}, err
 	}
 
-	return privateKey.PublicKey(), privateKey, nil
+	return PublicKey{key: pk}, PrivateKey{key: sk}, nil
 }
 
 // NewPrivateKeyFromSeed creat a private key from a seed
-func NewPrivateKeyFromSeed(seed []byte) (*PrivateKey, error) {
+func NewPrivateKeyFromSeed(seed []byte) (PrivateKey, error) {
 	if len(seed) != ed25519.SeedSize {
-		return nil, fmt.Errorf("%w:[%d]", ErrSeedSize, len(seed))
+		return PrivateKey{}, fmt.Errorf("%w:[%d]", ErrSeedSize, len(seed))
 	}
 
 	ed25519Sk := ed25519.NewKeyFromSeed(seed)
 
-	// Create nonce for PrivateKey
-	var nonce [32]byte
-	if _, err := rand.Read(nonce[:]); err != nil {
-		return nil, err
-	}
-
-	return &PrivateKey{seed: ed25519Sk.Seed(), nonce: nonce}, nil
+	return PrivateKey{key: ed25519Sk}, nil
 }
 
-// NewPrivateKeyFromString creat a private key from a string
-func NewPrivateKeyFromString(privateKey string) (*PrivateKey, error) {
-	seed, err := hex.DecodeString(privateKey)
-	if err != nil || len(seed) != ed25519.SeedSize {
-		return nil, fmt.Errorf("%w:[secret: %s]", ErrInvalidKeySize, privateKey)
+// NewPrivateKeyFromHex creat a private key from a string
+func NewPrivateKeyFromHex(skStr string) (PrivateKey, error) {
+	skBytes, err := hex.DecodeString(skStr)
+	if err != nil {
+		return PrivateKey{}, fmt.Errorf("%w:[secret: %s]", ErrInvalidKeySize, err.Error())
 	}
 
-	return NewPrivateKeyFromSeed(seed)
-}
-
-// NewPrivateKey generates a random seed key
-func NewPrivateKey() (*PrivateKey, error) {
-	seed := make([]byte, ed25519.SeedSize)
-	if _, err := rand.Read(seed); err != nil {
-		return nil, err
+	switch len(skBytes) {
+	case ed25519.PrivateKeySize:
+		keyBytes := make([]byte, ed25519.PrivateKeySize)
+		copy(keyBytes, skBytes)
+		return PrivateKey{key: keyBytes}, nil
+	case ed25519.SeedSize:
+		return NewPrivateKeyFromSeed(skBytes)
+	default:
+		return PrivateKey{}, ErrInvalidKeySize
 	}
-
-	return NewPrivateKeyFromSeed(seed)
 }
