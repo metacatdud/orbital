@@ -1,12 +1,14 @@
 package transport
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
 	"orbital/pkg/cryptographer"
 	"orbital/web/wasm/pkg/dom"
+	"sync"
 	"syscall/js"
 	"time"
 )
@@ -14,16 +16,21 @@ import (
 type HandlerFunc func(data []byte)
 
 type WsConn struct {
-	client       js.Value
-	topics       map[string]HandlerFunc
-	isOpen       bool
-	allowsBinary bool
-
-	reconnect            bool
-	reconnectAttempts    int
-	maxReconnectAttempts int
-	reconnectInterval    time.Duration
-	reconnectInProgress  bool
+	client                                      js.Value
+	topics                                      map[string]HandlerFunc
+	isOpen                                      bool
+	allowsBinary                                bool
+	reconnect                                   bool
+	reconnectAttempts                           int
+	maxReconnectAttempts                        int
+	reconnectInterval                           time.Duration
+	reconnectInProgress                         bool
+	heartbeatInterval                           time.Duration
+	heartbeatWait                               time.Duration
+	onOpenFn, onCloseFn, onMessageFn, onErrorFn js.Func
+	lastPong                                    time.Time
+	mu                                          sync.Mutex
+	kaCancelFn                                  context.CancelFunc
 }
 
 func NewWsConn(binaryMode bool) *WsConn {
@@ -34,10 +41,12 @@ func NewWsConn(binaryMode bool) *WsConn {
 		allowsBinary:         binaryMode,
 		reconnect:            true,
 		reconnectInterval:    5 * time.Second,
-		maxReconnectAttempts: 3,
+		maxReconnectAttempts: 10,
+		heartbeatInterval:    15 * time.Second,
+		heartbeatWait:        (15 * time.Second) * 2,
 	}
 
-	wsConn.init()
+	wsConn.connect()
 
 	return wsConn
 }
@@ -70,10 +79,9 @@ func (ws *WsConn) On(topic string, handler HandlerFunc) {
 	ws.topics[topic] = handler
 }
 
-func (ws *WsConn) init() {
+func (ws *WsConn) connect() {
 	wsURL := createWebSocketURL()
 	socket := js.Global().Get("WebSocket").New(wsURL)
-
 	ws.client = socket
 
 	if ws.allowsBinary {
@@ -81,20 +89,32 @@ func (ws *WsConn) init() {
 		socket.Set("binaryType", "arraybuffer")
 	}
 
-	ws.client.Call("addEventListener", "open", js.FuncOf(ws.onOpen))
-	ws.client.Call("addEventListener", "close", js.FuncOf(ws.onClose))
-	ws.client.Call("addEventListener", "message", js.FuncOf(ws.onMessage))
-	ws.client.Call("addEventListener", "error", js.FuncOf(ws.onError))
+	ws.onOpenFn = js.FuncOf(ws.onOpen)
+	ws.onCloseFn = js.FuncOf(ws.onClose)
+	ws.onMessageFn = js.FuncOf(ws.onMessage)
+	ws.onErrorFn = js.FuncOf(ws.onError)
+
+	socket.Call("addEventListener", "open", ws.onOpenFn)
+	socket.Call("addEventListener", "close", ws.onCloseFn)
+	socket.Call("addEventListener", "message", ws.onMessageFn)
+	socket.Call("addEventListener", "error", ws.onErrorFn)
 }
 
-func (ws *WsConn) onOpen(_ js.Value, _ []js.Value) interface{} {
+func (ws *WsConn) onOpen(_ js.Value, _ []js.Value) any {
+	ws.mu.Lock()
 	ws.isOpen = true
 	ws.reconnectAttempts = 0
+	ws.lastPong = time.Now()
+	ws.mu.Unlock()
+
+	ws.startKeepAlive()
 
 	return nil
 }
 
-func (ws *WsConn) onClose(_ js.Value, _ []js.Value) interface{} {
+func (ws *WsConn) onClose(_ js.Value, _ []js.Value) any {
+	ws.stopKeepAlive()
+
 	ws.isOpen = false
 
 	dom.ConsoleWarn("WebSocket connection closed")
@@ -105,7 +125,7 @@ func (ws *WsConn) onClose(_ js.Value, _ []js.Value) interface{} {
 	return nil
 }
 
-func (ws *WsConn) onMessage(_ js.Value, args []js.Value) interface{} {
+func (ws *WsConn) onMessage(_ js.Value, args []js.Value) any {
 	event := args[0]
 	dataVal := event.Get("data")
 
@@ -118,12 +138,26 @@ func (ws *WsConn) onMessage(_ js.Value, args []js.Value) interface{} {
 	return nil
 }
 
-func (ws *WsConn) onError(_ js.Value, _ []js.Value) interface{} {
+func (ws *WsConn) onError(_ js.Value, _ []js.Value) any {
 	dom.ConsoleLog("WebSocket connection error")
 	if ws.reconnect {
 		ws.scheduleReconnect()
 	}
 	return nil
+}
+
+func (ws *WsConn) teardown() {
+	if ws.client.Truthy() {
+		ws.client.Call("removeEventListener", "open", ws.onOpenFn)
+		ws.client.Call("removeEventListener", "close", ws.onCloseFn)
+		ws.client.Call("removeEventListener", "message", ws.onMessageFn)
+		ws.client.Call("removeEventListener", "error", ws.onErrorFn)
+	}
+
+	ws.onOpenFn.Release()
+	ws.onCloseFn.Release()
+	ws.onMessageFn.Release()
+	ws.onErrorFn.Release()
 }
 
 func (ws *WsConn) sendBinary(data []byte) {
@@ -139,7 +173,7 @@ func (ws *WsConn) sendText(data []byte) {
 
 func (ws *WsConn) handleBinaryMessage(dataBuffer js.Value) {
 	uint8Array := js.Global().Get("Uint8Array").New(dataBuffer)
-	length := uint8Array.Get("length").Int()
+	length := uint8Array.Length()
 	raw := make([]byte, length)
 	js.CopyBytesToGo(raw, uint8Array)
 
@@ -155,7 +189,10 @@ func (ws *WsConn) handleTextMessage(dataVal js.Value) {
 
 func (ws *WsConn) routeMessage(raw []byte) {
 
-	var msg cryptographer.Message
+	var (
+		msg cryptographer.Message
+		t   string
+	)
 	if err := json.Unmarshal(raw, &msg); err != nil {
 		dom.ConsoleLog("[routeMessage] not valid JSON")
 		return
@@ -172,23 +209,32 @@ func (ws *WsConn) routeMessage(raw []byte) {
 		return
 	}
 
-	var t string
-	if msg.Metadata != nil {
-		dom.ConsoleLog(msg.Metadata)
-		t, err = topic(msg.Metadata.Domain, msg.Metadata.Action, msg.Metadata.CorrelationID)
-		if err != nil {
-			dom.ConsoleLog(err.Error())
-			return
-		}
-	}
-
-	handler, exists := ws.topics[t]
-	if !exists {
-		dom.ConsoleLog("[routeMessage] topic not found", t)
+	t, err = topic(msg.Metadata.Domain, msg.Metadata.Action, msg.Metadata.CorrelationID)
+	if err != nil {
+		dom.ConsoleLog(err.Error())
 		return
 	}
 
-	handler(msg.Body)
+	switch t {
+	case "system/welcome":
+		// --- move this out and allow app level implementation
+		dom.ConsoleLog("[routeMessage] system welcome message", string(msg.Body))
+	case "system/keepAlivePing":
+		ws.Send(makeKeepAlivePong())
+	case "system/keepAlivePong":
+		ws.mu.Lock()
+		ws.lastPong = time.Now()
+		dom.ConsoleLog("[routeMessage] keep alive pong", ws.lastPong)
+		ws.mu.Unlock()
+	default:
+		handler, exists := ws.topics[t]
+		if !exists {
+			dom.ConsoleLog("[routeMessage] topic not found", t)
+			return
+		}
+
+		handler(msg.Body)
+	}
 }
 
 func (ws *WsConn) scheduleReconnect() {
@@ -214,11 +260,43 @@ func (ws *WsConn) scheduleReconnect() {
 
 	dom.ConsoleLog("[scheduleReconnect] attempting to reconnect in", delay.String())
 
-	// Wait the "delay" and call init to reconnect
+	// Wait the "delay" and call connect to reconnect
 	time.AfterFunc(delay, func() {
-		ws.init()
+		ws.teardown()
+		ws.connect()
 		ws.reconnectInProgress = false
 	})
+}
+
+func (ws *WsConn) startKeepAlive() {
+	ws.stopKeepAlive()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	ws.kaCancelFn = cancel
+
+	go func() {
+		tick := time.NewTicker(ws.heartbeatInterval)
+		defer tick.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-tick.C:
+				m := makeKeepAlivePing()
+				ws.Send(m)
+			}
+		}
+	}()
+}
+
+func (ws *WsConn) stopKeepAlive() {
+	ws.mu.Lock()
+	if ws.kaCancelFn != nil {
+		ws.kaCancelFn()
+		ws.kaCancelFn = nil
+	}
+	ws.mu.Unlock()
 }
 
 // createWebSocketURL determine the URL for websocket
@@ -254,4 +332,34 @@ func topic(domain, action string, cid ...string) (string, error) {
 	}
 
 	return t, nil
+}
+
+// makeKeepAlivePing creates an unsigned message
+// TODO: See what the implications are for this message
+func makeKeepAlivePing() cryptographer.Message {
+	msg := cryptographer.Message{
+		V:         0,
+		Timestamp: cryptographer.Now(),
+		Metadata: cryptographer.Metadata{
+			Domain: "system",
+			Action: "keepAlivePing",
+		},
+		Body: nil,
+	}
+
+	return msg
+}
+
+func makeKeepAlivePong() cryptographer.Message {
+	msg := cryptographer.Message{
+		V:         0,
+		Timestamp: cryptographer.Now(),
+		Metadata: cryptographer.Metadata{
+			Domain: "system",
+			Action: "keepAlivePong",
+		},
+		Body: nil,
+	}
+
+	return msg
 }

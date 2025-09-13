@@ -6,6 +6,7 @@ var (
 	ErrBadPayload       = errors.New("unable to decode payload")
 	ErrUnmarshalPayload = errors.New("unable to unmarshal payload")
 	ErrPathNotFound     = errors.New("path not found")
+	ErrHttpListen       = errors.New("http listen error")
 )
 
 type Error struct {

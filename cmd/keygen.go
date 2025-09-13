@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"encoding/hex"
 	"fmt"
-	"github.com/spf13/cobra"
 	"orbital/pkg/cryptographer"
 	"orbital/pkg/prompt"
+
+	"github.com/spf13/cobra"
 )
 
 func newKeygenCmd() *cobra.Command {
@@ -20,8 +22,8 @@ func newKeygenCmd() *cobra.Command {
 
 			cmdHeader("keygen")
 
-			prompt.Err(prompt.NewLine("- Secret key: %s [DO NOT SHARE AND KEEP IT SAFE]"), sk.String())
-			prompt.Info(prompt.NewLine("- Public key: %s"), pk.String())
+			prompt.Err(prompt.NewLine("- Secret key: %s [DO NOT SHARE AND KEEP IT SAFE]"), hex.EncodeToString(sk.Seed()))
+			prompt.Info(prompt.NewLine("- Public key: %s"), pk.ToHex())
 
 			fmt.Println()
 			return nil

@@ -4,7 +4,6 @@ import "errors"
 
 // Errors
 var (
-	ErrInvalidIP         = errors.New("invalid ip address")
 	ErrInvalidEd25519Key = errors.New("invalid ed25519 key")
 	ErrCannotCreateDir   = errors.New("cannot create dir")
 	ErrInvalidFilepath   = errors.New("invalid filepath")

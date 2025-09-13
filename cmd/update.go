@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
 	"io"
 	"io/fs"
 	"orbital/config"
@@ -14,6 +13,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/spf13/cobra"
 )
 
 func newUpdateCmd(deps Dependencies) *cobra.Command {
@@ -50,14 +51,14 @@ func newUpdateCmd(deps Dependencies) *cobra.Command {
 				return fmt.Errorf("no secret key provided")
 			}
 
-			sk, err := cryptographer.NewPrivateKeyFromString(secretKey)
+			sk, err := cryptographer.NewPrivateKeyFromHex(secretKey)
 			if err != nil {
 				return ErrInvalidEd25519Key
 			}
 
 			// TODO: Validate with database too
 			userRepo := domain.NewUserRepository(dbConn)
-			user, err := userRepo.GetByPublicKey(sk.PublicKey().String())
+			user, err := userRepo.GetByPublicKey(sk.PublicKey().ToHex())
 			if err != nil {
 				return err
 			}

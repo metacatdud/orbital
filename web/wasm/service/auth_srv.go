@@ -6,6 +6,7 @@ import (
 	"orbital/pkg/cryptographer"
 	"orbital/web/wasm/domain"
 	"orbital/web/wasm/orbital"
+	"orbital/web/wasm/pkg/dom"
 	"orbital/web/wasm/pkg/events"
 	"orbital/web/wasm/pkg/transport"
 )
@@ -44,17 +45,21 @@ func (srv *AuthService) Login(req LoginReq) (*LoginRes, error) {
 	api := transport.NewAPI("rpc/AuthService/Auth")
 	api.WithMiddleware(transport.VerifyAndUnwrap)
 
-	sk, err := cryptographer.NewPrivateKeyFromString(req.SecretKey)
+	sk, err := cryptographer.NewPrivateKeyFromHex(req.SecretKey)
 	if err != nil {
 		return nil, err
 	}
 
-	msg, err := cryptographer.Encode(sk, &cryptographer.Metadata{
+	msg, err := cryptographer.Encode(sk, cryptographer.Metadata{
 		Domain: "auth",
 		Action: "login",
 	}, map[string]any{
-		"publicKey": sk.PublicKey().String(),
+		"publicKey": sk.PublicKey().ToHex(),
 	})
+	if err != nil {
+		dom.ConsoleLog("msg", msg, "err", err.Error())
+		return nil, err
+	}
 
 	raw, err := json.Marshal(msg)
 	if err != nil {
@@ -111,7 +116,7 @@ type (
 	}
 )
 
-func (srv *AuthService) CheckKey(req CheckKeyReq) (*CheckKeyRes, error) {
+func (srv *AuthService) CheckKey(_ CheckKeyReq) (*CheckKeyRes, error) {
 	authRepo := domain.NewAuthRepository(srv.di.Storage)
 	auth, err := authRepo.Get()
 	if err != nil {
@@ -122,7 +127,7 @@ func (srv *AuthService) CheckKey(req CheckKeyReq) (*CheckKeyRes, error) {
 		return nil, err
 	}
 
-	sk, err := cryptographer.NewPrivateKeyFromString(auth.SecretKey)
+	sk, err := cryptographer.NewPrivateKeyFromHex(auth.SecretKey)
 	if err != nil {
 		return &CheckKeyRes{Code: transport.Unauthenticated}, nil
 	}
@@ -130,10 +135,15 @@ func (srv *AuthService) CheckKey(req CheckKeyReq) (*CheckKeyRes, error) {
 	api := transport.NewAPI("rpc/AuthService/Check")
 	api.WithMiddleware(transport.VerifyAndUnwrap)
 
-	msg, err := cryptographer.Encode(sk, &cryptographer.Metadata{
+	msg, err := cryptographer.Encode(sk, cryptographer.Metadata{
 		Domain: "auth",
 		Action: "check",
 	}, nil)
+
+	if err != nil {
+		dom.ConsoleLog("msg", msg, "err", err.Error())
+		return nil, err
+	}
 
 	raw, err := json.Marshal(msg)
 	if err != nil {

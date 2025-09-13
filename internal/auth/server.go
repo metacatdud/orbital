@@ -64,13 +64,13 @@ func (s *authServiceServer) handleAuthentication(w http.ResponseWriter, r *http.
 		return
 	}
 
-	sk, err := cryptographer.NewPrivateKeyFromString(cfg.SecretKey)
+	sk, err := cryptographer.NewPrivateKeyFromHex(cfg.SecretKey)
 	if err != nil {
 		s.server.OnError(w, r, err)
 		return
 	}
 
-	orbitalMessage, _ := cryptographer.Encode(sk, &cryptographer.Metadata{
+	orbitalMessage, _ := cryptographer.Encode(sk, cryptographer.Metadata{
 		Domain:        Domain,
 		Action:        ActionLogin,
 		CorrelationID: publicKey,
@@ -101,13 +101,13 @@ func (s *authServiceServer) handleCheckKey(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	sk, err := cryptographer.NewPrivateKeyFromString(cfg.SecretKey)
+	sk, err := cryptographer.NewPrivateKeyFromHex(cfg.SecretKey)
 	if err != nil {
 		s.server.OnError(w, r, err)
 		return
 	}
 
-	orbitalMessage, _ := cryptographer.Encode(sk, &cryptographer.Metadata{
+	orbitalMessage, _ := cryptographer.Encode(sk, cryptographer.Metadata{
 		Domain:        Domain,
 		Action:        ActionCheck,
 		CorrelationID: publicKey,

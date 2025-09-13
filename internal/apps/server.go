@@ -53,13 +53,13 @@ func (s *appsServiceServer) handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sk, err := cryptographer.NewPrivateKeyFromString(cfg.SecretKey)
+	sk, err := cryptographer.NewPrivateKeyFromHex(cfg.SecretKey)
 	if err != nil {
 		s.server.OnError(w, r, err)
 		return
 	}
 
-	orbitalMessage, _ := cryptographer.Encode(sk, &cryptographer.Metadata{
+	orbitalMessage, _ := cryptographer.Encode(sk, cryptographer.Metadata{
 		Domain: Domain,
 		Action: ActionList,
 		Tags:   nil,

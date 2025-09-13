@@ -2,15 +2,16 @@ package machine
 
 import (
 	"errors"
+	"os/exec"
+	"runtime"
+	"strings"
+	"time"
+
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/disk"
 	"github.com/shirou/gopsutil/v4/host"
 	"github.com/shirou/gopsutil/v4/mem"
 	"github.com/shirou/gopsutil/v4/net"
-	"os/exec"
-	"runtime"
-	"strings"
-	"time"
 )
 
 type Info struct {

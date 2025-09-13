@@ -6,28 +6,26 @@ import (
 	"io/fs"
 	"net/http"
 	"orbital/config"
+	"orbital/pkg/cryptographer"
 	"orbital/pkg/logger"
-	"strconv"
 )
 
 //go:embed all:web/*
 var staticDir embed.FS
 
 type Config struct {
-	ApiServer *Server
-	WsServer  *WsConn
-	Ip        string
-	Port      int
+	ApiServer HTTPService
+	WsServer  WsService
+	Addr      string
 	Cfg       *config.Config
 	Logger    *logger.Logger
 }
 
 type Orbital struct {
 	client    *http.Server
-	apiServer *Server
-	wsServer  *WsConn
-	ip        string
-	port      int
+	apiServer HTTPService
+	wsServer  WsService
+	addr      string
 	cfg       *config.Config
 	log       *logger.Logger
 }
@@ -49,20 +47,20 @@ func (n *Orbital) Start() error {
 	handler := corsMiddleware(mux)
 
 	n.client = &http.Server{
-		Addr:    fmt.Sprintf("%s:%s", n.ip, strconv.Itoa(n.port)),
+		Addr:    n.addr,
 		Handler: handler,
 	}
 
-	n.log.Info("Starting Orbital", "addr", fmt.Sprintf("%s:%d", n.ip, n.port))
+	n.log.Info("Starting Orbital", "addr", n.addr)
 
-	if err := n.client.ListenAndServe(); err != nil {
-		return fmt.Errorf("failed to start HTTP server: %w", err)
+	if err = n.client.ListenAndServe(); err != nil {
+		return fmt.Errorf("%w:[%v]", ErrHttpListen, err)
 	}
 
 	return nil
 }
 
-func New(cfg Config) *Orbital {
+func New(cfg Config) (*Orbital, error) {
 	var lg *logger.Logger
 
 	if cfg.Logger != nil {
@@ -73,12 +71,22 @@ func New(cfg Config) *Orbital {
 		lg = logger.New(logger.LevelDebug, logger.FormatString)
 	}
 
+	sk, err := cryptographer.NewPrivateKeyFromHex(cfg.Cfg.SecretKey)
+	if err != nil {
+		return nil, err
+	}
+
+	apiSrv := cfg.ApiServer
+	apiSrv.SetSecretKey(sk)
+
+	wsSrv := cfg.WsServer
+	wsSrv.SetSecretKey(sk)
+
 	return &Orbital{
-		apiServer: cfg.ApiServer,
-		wsServer:  cfg.WsServer,
-		ip:        cfg.Ip,
+		apiServer: apiSrv,
+		wsServer:  wsSrv,
+		addr:      cfg.Addr,
 		cfg:       cfg.Cfg,
 		log:       lg,
-		port:      cfg.Port,
-	}
+	}, nil
 }

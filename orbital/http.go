@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"orbital/pkg/cryptographer"
 	"orbital/pkg/logger"
 	"path"
 	"strings"
@@ -21,17 +22,19 @@ type Route struct {
 }
 
 type HTTPService interface {
+	SetSecretKey(secretKey cryptographer.PrivateKey)
 	Register(route Route)
 	OnError(w http.ResponseWriter, r *http.Request, err error)
 	Use(mw ...Middleware)
+	ServeHTTP(w http.ResponseWriter, r *http.Request)
 }
 
 type Server struct {
+	secretKey   cryptographer.PrivateKey
 	log         *logger.Logger
 	routes      map[string]Route
 	notFound    http.HandlerFunc
 	onError     func(w http.ResponseWriter, r *http.Request, err error)
-	wsConn      *WsConn
 	middlewares []Middleware
 }
 
@@ -51,6 +54,10 @@ func NewServer(log *logger.Logger) *Server {
 	)
 
 	return srv
+}
+
+func (s *Server) SetSecretKey(secretKey cryptographer.PrivateKey) {
+	s.secretKey = secretKey
 }
 
 func (s *Server) Use(mw ...Middleware) {
