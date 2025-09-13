@@ -36,7 +36,7 @@ type Message struct {
 	PublicKey [32]byte  `json:"publicKey"`
 	V         int64     `json:"v"`
 	Timestamp Timestamp `json:"timestamp"`
-	Metadata  *Metadata `json:"metadata"`
+	Metadata  Metadata  `json:"metadata"`
 	Body      []byte    `json:"body"`
 	Signature [64]byte  `json:"sig"`
 }
@@ -51,6 +51,15 @@ func (m *Message) ComputeID() ([32]byte, error) {
 	hash := sha256.Sum256(serializedData)
 
 	return hash, nil
+}
+
+func (m *Message) SetPublicKey(b []byte) error {
+	if len(b) != ed25519.PublicKeySize {
+		return ErrInvalidKeySize
+	}
+
+	copy(m.PublicKey[:], b)
+	return nil
 }
 
 func (m *Message) Serialize() ([]byte, error) {
@@ -98,11 +107,11 @@ func (m *Message) Serialize() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (m *Message) Sign(privateKey32Byte []byte) error {
-	if len(privateKey32Byte) != ed25519.SeedSize {
+func (m *Message) Sign(secretKeySeed []byte) error {
+	if len(secretKeySeed) != ed25519.SeedSize {
 		return fmt.Errorf("%w:[%d]", ErrSeedSize, ed25519.SeedSize)
 	}
-	privateKey := ed25519.NewKeyFromSeed(privateKey32Byte)
+	privateKey := ed25519.NewKeyFromSeed(secretKeySeed)
 
 	serial, err := m.Serialize()
 	if err != nil {
@@ -134,8 +143,7 @@ func (m *Message) Verify() (bool, error) {
 	return ed25519.Verify(m.PublicKey[:], hash[:], m.Signature[:]), nil
 }
 
-func Encode(sk *PrivateKey, metadata *Metadata, body any) (*Message, error) {
-	pubK := sk.PublicKey()
+func Encode(sk PrivateKey, metadata Metadata, body any) (*Message, error) {
 	var (
 		b []byte
 	)
@@ -144,20 +152,19 @@ func Encode(sk *PrivateKey, metadata *Metadata, body any) (*Message, error) {
 		b, _ = json.Marshal(body)
 	}
 
-	if metadata == nil {
-		metadata = &Metadata{}
-	}
-
 	msg := &Message{
-		PublicKey: pubK.Compress(),
 		V:         1,
 		Timestamp: Now(),
 		Metadata:  metadata,
 		Body:      b,
 	}
 
-	if err := msg.Sign(sk.Bytes()); err != nil {
-		return nil, errors.New("sign msg fail")
+	if err := msg.SetPublicKey(sk.PublicKey().Bytes()); err != nil {
+		return nil, ErrPubKeyMessage
+	}
+
+	if err := msg.Sign(sk.Seed()); err != nil {
+		return nil, ErrSignMessage
 	}
 
 	return msg, nil
