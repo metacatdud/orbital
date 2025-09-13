@@ -3,10 +3,11 @@ package orbital
 import (
 	"context"
 	"fmt"
-	"github.com/coder/websocket"
 	"orbital/pkg/stringer"
 	"strings"
 	"sync"
+
+	"github.com/coder/websocket"
 )
 
 type WsConnection struct {

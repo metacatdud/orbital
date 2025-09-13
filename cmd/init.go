@@ -4,11 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/spf13/cobra"
 	"io"
 	"io/fs"
-	"net"
 	"orbital/config"
 	"orbital/domain"
 	"orbital/pkg/cryptographer"
@@ -16,6 +13,9 @@ import (
 	"orbital/pkg/prompt"
 	"os"
 	"path/filepath"
+
+	"github.com/google/uuid"
+	"github.com/spf13/cobra"
 )
 
 // Flags
@@ -34,45 +34,40 @@ func newInitCmd(deps Dependencies) *cobra.Command {
 
 			var err error
 
-			uCfgDir, err := os.UserConfigDir()
-			if err != nil {
-				return fmt.Errorf("cannot find user config dir: %w", err)
-			}
-
 			secretKey, _ := cmd.Flags().GetString("sk")
-			ip, _ := cmd.Flags().GetString("ip")
+			addr, _ := cmd.Flags().GetString("addr")
 			dataPath, _ := cmd.Flags().GetString("datapath")
 
 			prompt.Bold(prompt.ColorYellow, prompt.NewLine("[ Validating data ]"))
 
-			if secretKey == "" || ip == "" || dataPath == "" {
-				return errors.New("secret key, ip and datapath cannot be empty")
+			if secretKey == "" || addr == "" || dataPath == "" {
+				return errors.New("secret key, addr and dataPath cannot be empty")
 			}
 			prompt.Bold(prompt.ColorGreen, "        OK")
 
 			isReinit := false
-			cfgPath := filepath.Join(uCfgDir, "orbital/config.yaml")
+			cfgPath := "/etc/orbital/config.yaml"
 			if _, err = os.Stat(cfgPath); !os.IsNotExist(err) {
 				isReinit = true
 			}
 
 			orbitalCfg := config.Config{
 				SecretKey: secretKey,
-				BindIP:    ip,
+				Addr:      addr,
 				Datapath:  dataPath,
 			}
 
 			prompt.Bold(prompt.ColorYellow, prompt.NewLine("[ Validating private key ]"))
-			if _, err = cryptographer.NewPrivateKeyFromString(secretKey); err != nil {
+			if _, err = cryptographer.NewPrivateKeyFromHex(secretKey); err != nil {
 				return ErrInvalidEd25519Key
 			}
 			prompt.Bold(prompt.ColorGreen, " OK")
 
-			prompt.Bold(prompt.ColorYellow, prompt.NewLine("[ Validating ip ]"))
-			if err = validateIp(ip); err != nil {
+			prompt.Bold(prompt.ColorYellow, prompt.NewLine("[ Validating address ]"))
+			if err = orbitalCfg.Validate(); err != nil {
 				return err
 			}
-			prompt.Bold(prompt.ColorGreen, "          OK")
+			prompt.Bold(prompt.ColorGreen, "      OK")
 
 			// Skip this step on forced to avoid data corruption or unexpected issues
 			prompt.Bold(prompt.ColorYellow, prompt.NewLine("[ Create data folders ]"))
@@ -104,12 +99,12 @@ func newInitCmd(deps Dependencies) *cobra.Command {
 			prompt.Bold(prompt.ColorYellow, prompt.NewLine("[ Creating config file ]"))
 			if err = orbitalCfg.Save(cfgPath); err != nil {
 				if errors.Is(err, config.ErrConfigWrite) {
-					prompt.Warn(prompt.NewLine("Cannot write the file. Use sudo privileges. The config wile will created at: $HOME/.config/orbital/config.yaml"))
+					prompt.Warn(prompt.NewLine("Cannot write the file. Use sudo privileges. The config wile will created at: /etc/orbital/config.yaml"))
 					prompt.Info(prompt.NewLine("If you are not comfortable running Orbital with sudo, create the file manually and copy the following contents between the BEGIN and END to it"))
 					fmt.Println()
 					fmt.Println()
 
-					if err := config.PrintToConsole(orbitalCfg); err != nil {
+					if err = config.PrintToConsole(orbitalCfg); err != nil {
 						return err
 					}
 				}
@@ -127,19 +122,15 @@ func newInitCmd(deps Dependencies) *cobra.Command {
 			fmt.Println()
 			prompt.OK("Details |---------------------------- ")
 			fmt.Println()
-
-			prompt.Info(prompt.NewLine("--- BEGIN %s/orbital/config.yaml -------"), uCfgDir)
-
-			prompt.Err(prompt.NewLine("secretKey: %s"), secretKey)
-			prompt.Info(prompt.NewLine("bindIp: %s"), ip)
-			prompt.Info(prompt.NewLine("dataPath: %s"), dataPath)
-
-			prompt.Info(prompt.NewLine("--- END %s/orbital/config.yaml ----------"), uCfgDir)
-
 			fmt.Println()
-			prompt.Info(prompt.NewLine("Config file location: %s/orbital/config.yaml"), uCfgDir)
+
+			if err = config.PrintToConsole(orbitalCfg); err != nil {
+				return err
+			}
+
+			prompt.Info(prompt.NewLine("Config file location: /etc/orbital/config.yaml"))
 			if forced {
-				prompt.Warn(prompt.NewLine("Old config backup:    %s/orbital/config.yaml.old"), uCfgDir)
+				prompt.Warn(prompt.NewLine("Old config backup:    /etc/orbital/config.yaml.old"))
 			}
 
 			prompt.Bold(prompt.ColorYellow, prompt.NewLine("[ Migrate database ]"))
@@ -157,7 +148,7 @@ func newInitCmd(deps Dependencies) *cobra.Command {
 
 			// TODO: Move this to a new custom command for creating root user
 			prompt.Bold(prompt.ColorYellow, prompt.NewLine("[ Create root user ]"))
-			sk, err := cryptographer.NewPrivateKeyFromString(orbitalCfg.SecretKey)
+			sk, err := cryptographer.NewPrivateKeyFromHex(orbitalCfg.SecretKey)
 			if err != nil {
 				return err
 			}
@@ -166,7 +157,7 @@ func newInitCmd(deps Dependencies) *cobra.Command {
 			user := domain.User{
 				ID:     uuid.New().String(),
 				Name:   "admin",
-				PubKey: sk.PublicKey().String(),
+				PubKey: sk.PublicKey().ToHex(),
 				Access: "root",
 			}
 
@@ -192,7 +183,7 @@ func newInitCmd(deps Dependencies) *cobra.Command {
 	}
 
 	initCmd.Flags().String("sk", "", "Secret key for node communication. Use keygen command to generate")
-	initCmd.Flags().String("ip", "", "Node binding ip")
+	initCmd.Flags().String("addr", "", "Orbital node binding address")
 	initCmd.Flags().String("datapath", "", "Orbital data storage path")
 	initCmd.Flags().BoolVarP(&forced, "force", "f", false, "Force overwrite of existing config file")
 
@@ -210,7 +201,7 @@ func createDataDir(orbitalCfg config.Config) error {
 		return nil
 	}
 
-	// Create database path
+	// Create a database path
 	dir := filepath.Join(orbitalCfg.OrbitalRootDir(), "data", "migrations")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("%w:[%s]", ErrCannotCreateDir, dir)
@@ -224,15 +215,7 @@ func createDataDir(orbitalCfg config.Config) error {
 	return nil
 }
 
-func validateIp(ip string) error {
-	if net.ParseIP(ip) == nil {
-		return fmt.Errorf("%w:[ip: %s]", ErrInvalidIP, ip)
-	}
-
-	return nil
-}
-
-// updateDataDirFromResources wih resources files from the embed
+// updateDataDirFromResources with resource files from the embed
 func updateDataDirFromResources(resDir fs.FS, orbitalCfg config.Config) error {
 
 	err := fs.WalkDir(resDir, "resources", func(path string, d fs.DirEntry, err error) error {

@@ -41,12 +41,12 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 		return err
 	}
 
-	sk, err := cryptographer.NewPrivateKeyFromString(cfg.SecretKey)
+	sk, err := cryptographer.NewPrivateKeyFromHex(cfg.SecretKey)
 	if err != nil {
 		return err
 	}
 
-	meta := &cryptographer.Metadata{
+	meta := cryptographer.Metadata{
 		Domain: "machine",
 		Action: "jobAllData",
 	}
@@ -62,7 +62,7 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 		}
 
 		msg, _ := cryptographer.Encode(sk, meta, body)
-		service.ws.Broadcast(*msg)
+		service.ws.Broadcast(ctx, *msg)
 	}
 
 	cpu, err := getCPUInfo()
@@ -74,7 +74,7 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 		}
 
 		msg, _ := cryptographer.Encode(sk, meta, body)
-		service.ws.Broadcast(*msg)
+		service.ws.Broadcast(ctx, *msg)
 	}
 
 	mem, err := getMemInfo()
@@ -85,7 +85,7 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 			Msg:  err.Error(),
 		}
 		msg, _ := cryptographer.Encode(sk, meta, body)
-		service.ws.Broadcast(*msg)
+		service.ws.Broadcast(ctx, *msg)
 	}
 
 	netwk, err := getNetworkInfo()
@@ -97,7 +97,7 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 		}
 
 		msg, _ := cryptographer.Encode(sk, meta, body)
-		service.ws.Broadcast(*msg)
+		service.ws.Broadcast(ctx, *msg)
 	}
 
 	disk, err := getDiskInfo()
@@ -108,7 +108,7 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 			Msg:  err.Error(),
 		}
 		msg, _ := cryptographer.Encode(sk, meta, body)
-		service.ws.Broadcast(*msg)
+		service.ws.Broadcast(ctx, *msg)
 	}
 
 	stats := &SystemInfo{
@@ -123,7 +123,7 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 	body.SystemInfo = stats
 
 	msg, _ := cryptographer.Encode(sk, meta, body)
-	service.ws.Broadcast(*msg)
+	service.ws.Broadcast(ctx, *msg)
 
 	return nil
 }

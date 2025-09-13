@@ -52,7 +52,7 @@ func (srv *AppsService) List(req ListReq) (*ListRes, error) {
 		return nil, err
 	}
 
-	sk, err := cryptographer.NewPrivateKeyFromString(auth.SecretKey)
+	sk, err := cryptographer.NewPrivateKeyFromHex(auth.SecretKey)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func (srv *AppsService) List(req ListReq) (*ListRes, error) {
 	api := transport.NewAPI("rpc/AppsService/List")
 	api.WithMiddleware(transport.VerifyAndUnwrap)
 
-	msg, err := cryptographer.Encode(sk, &cryptographer.Metadata{
+	msg, err := cryptographer.Encode(sk, cryptographer.Metadata{
 		Domain: "apps",
 		Action: "list",
 	}, req)

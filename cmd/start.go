@@ -1,22 +1,22 @@
 package cmd
 
 import (
-	"fmt"
-	"github.com/spf13/cobra"
 	"orbital/config"
 	"orbital/domain"
 	"orbital/internal/apps"
 	"orbital/internal/auth"
 	"orbital/internal/machine"
+	"orbital/internal/system"
 	"orbital/orbital"
 	"orbital/pkg/db"
 	"orbital/pkg/logger"
 	"orbital/pkg/prompt"
 	"path/filepath"
+
+	"github.com/spf13/cobra"
 )
 
 var (
-	port  int
 	debug bool
 )
 
@@ -33,8 +33,6 @@ func newStartCmd() *cobra.Command {
 			if debug {
 				logLvl = logger.LevelDebug
 			}
-
-			fmt.Println("Log LVL: ", logLvl)
 
 			log := logger.New(logLvl, logger.FormatString)
 
@@ -76,22 +74,31 @@ func newStartCmd() *cobra.Command {
 				Ws:  wsSrv,
 			})
 
+			systemSvc := system.NewService(system.Dependencies{
+				Log: log,
+				Ws:  wsSrv,
+			})
+
 			// Register all service to server
 			auth.RegisterAuthServiceServer(apiSrv, wsSrv, authSvc)
 			apps.RegisterAppsServiceServer(apiSrv, wsSrv, appsSvc)
 			machine.RegisterMachineServiceServer(apiSrv, wsSrv, machineSvc)
+			system.RegisterSystemServiceServer(apiSrv, wsSrv, systemSvc)
 
 			// Boot Orbital
 			orbitalCfg := orbital.Config{
 				ApiServer: apiSrv,
 				WsServer:  wsSrv,
-				Ip:        fmt.Sprintf("[%s]", cfg.BindIP),
+				Addr:      cfg.Addr,
 				Cfg:       cfg,
-				Port:      port,
 				Logger:    log,
 			}
 
-			orbitalNode := orbital.New(orbitalCfg)
+			orbitalNode, err := orbital.New(orbitalCfg)
+			if err != nil {
+				return err
+			}
+			
 			if err = orbitalNode.Start(); err != nil {
 				return err
 			}
@@ -99,7 +106,6 @@ func newStartCmd() *cobra.Command {
 		},
 	}
 
-	startCmd.Flags().IntVarP(&port, "port", "p", 8080, "Service port")
 	startCmd.Flags().BoolVarP(&debug, "debug", "", false, "Debug mode")
 
 	return startCmd
