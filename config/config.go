@@ -2,14 +2,17 @@ package config
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v3"
+	"net"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
 	SecretKey string `yaml:"secretKey"`
-	BindIP    string `yaml:"bindIp"`
+	Addr      string `yaml:"addr"`
 	Datapath  string `yaml:"dataPath"`
 }
 
@@ -21,8 +24,8 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("%w:[len: %d]", ErrSecretKeyLength, len(c.SecretKey))
 	}
 
-	if c.BindIP == "" {
-		return fmt.Errorf("%w", ErrIpRequired)
+	if c.Addr == "" {
+		return validateAddr(c.Addr)
 	}
 
 	if c.Datapath == "" {
@@ -61,12 +64,8 @@ func (c *Config) OrbitalRootDir() string {
 }
 
 func LoadConfig() (*Config, error) {
-	uConfD, err := os.UserConfigDir()
-	if err != nil {
-		return nil, fmt.Errorf("%w:[%s]", ErrConfigRead, err.Error())
-	}
 
-	cfgPath := filepath.Join(uConfD, "orbital/config.yaml")
+	cfgPath := filepath.Join("/etc/orbital/config.yaml")
 	cfgBytes, err := os.ReadFile(cfgPath)
 	if err != nil {
 		return nil, fmt.Errorf("%w:[%s]", ErrConfigRead, err.Error())
@@ -91,6 +90,40 @@ func PrintToConsole(config Config) error {
 	fmt.Println(string(configData))
 	fmt.Println("---END config.yaml---")
 	fmt.Println()
+
+	return nil
+}
+
+func validateAddr(addr string) error {
+	if addr == "" {
+		return ErrAddrIsEmpty
+	}
+
+	if ip := net.ParseIP(addr); ip != nil {
+		return nil
+	}
+
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		if strings.Count(addr, ":") >= 2 && !strings.Contains(addr, "[") && !strings.Contains(addr, "]") {
+			return fmt.Errorf("%w:[%s]", ErrAddrInvalidIPv6, addr)
+		}
+		return fmt.Errorf("%w:[%v]", ErrAddrInvalidIP, err)
+	}
+
+	if net.ParseIP(host) == nil {
+		return fmt.Errorf("%w:[%s]", ErrAddrInvalidIP, host)
+	}
+
+	if port == "" {
+		return ErrAddrPort
+	}
+
+	for _, ch := range port {
+		if ch < '0' || ch > '9' {
+			return ErrAddrPortNaN
+		}
+	}
 
 	return nil
 }
