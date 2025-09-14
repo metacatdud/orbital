@@ -161,7 +161,7 @@ func (comp *BaseComponent) Render(data map[string]any) (string, error) {
 	if data == nil {
 		data = comp.DI.State.GetAll()
 	}
-	dom.ConsoleLog(comp.id, data)
+
 	if err := comp.tpl.Execute(&buf, data); err != nil {
 		return "", err
 	}

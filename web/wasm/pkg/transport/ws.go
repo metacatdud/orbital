@@ -16,6 +16,7 @@ import (
 type HandlerFunc func(data []byte)
 
 type WsConn struct {
+	mu                                          sync.Mutex
 	client                                      js.Value
 	topics                                      map[string]HandlerFunc
 	isOpen                                      bool
@@ -27,9 +28,8 @@ type WsConn struct {
 	reconnectInProgress                         bool
 	heartbeatInterval                           time.Duration
 	heartbeatWait                               time.Duration
-	onOpenFn, onCloseFn, onMessageFn, onErrorFn js.Func
 	lastPong                                    time.Time
-	mu                                          sync.Mutex
+	onOpenFn, onCloseFn, onMessageFn, onErrorFn js.Func
 	kaCancelFn                                  context.CancelFunc
 }
 

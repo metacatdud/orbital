@@ -142,11 +142,11 @@ func (comp *MainComponent) mountDashboard(shouldMount bool) {
 
 	var err error
 	if shouldMount && !comp.isDashboardMounted {
-		comp.dashboardComp, err = LookupComponent(DashboardComponentRegKey, comp.di)
-		if err != nil {
-			dom.ConsoleError("[MainComponent] mountDashboard", err.Error())
-			return
-		}
+		comp.dashboardComp = NewDashboardComponent(comp.di)
+		//if err != nil {
+		//	dom.ConsoleError("[MainComponent] mountDashboard", err.Error())
+		//	return
+		//}
 
 		if err = comp.dashboardComp.Mount(&container); err != nil {
 			dom.ConsoleError("[MainComponent] mountDashboard", err.Error())
