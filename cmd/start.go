@@ -1,123 +1,113 @@
 package cmd
 
 import (
+	"net"
+	"path/filepath"
+	"time"
+
+	"atomika.io/atomika/atomika"
 	"orbital/config"
 	"orbital/domain"
 	"orbital/internal/apps"
 	"orbital/internal/auth"
 	"orbital/internal/machine"
 	"orbital/internal/system"
-	"orbital/orbital"
 	"orbital/pkg/db"
 	"orbital/pkg/logger"
 	"orbital/pkg/prompt"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 )
 
-var (
-	debug bool
-)
+var debug bool
 
 func newStartCmd() *cobra.Command {
-
-	startCmd := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "start",
 		Short: "start the node",
 		RunE: func(cmd *cobra.Command, args []string) error {
-
 			cmdHeader("start")
 
-			var logLvl = logger.LevelError
+			logLvl := logger.LevelError
 			if debug {
 				logLvl = logger.LevelDebug
 			}
-
 			log := logger.New(logLvl, logger.FormatString)
 
 			cfg, err := config.LoadConfig()
 			if err != nil {
-				prompt.Err(prompt.NewLine("cannot load config: %s"), err.Error())
+				prompt.Err("\ncannot load config: %s", err.Error())
 				return err
 			}
 
 			dbConn, err := setupDB(cfg)
 			if err != nil {
-				prompt.Err(prompt.NewLine("cannot setup db: %s"), err.Error())
+				prompt.Err("\ncannot setup db: %s", err.Error())
 				return err
 			}
 
-			// Repositories
 			appRepo := domain.NewAppRepository(dbConn)
 			userRepo := domain.NewUserRepository(dbConn)
 
-			// Add TCP Server here
-
-			apiSrv := orbital.NewServer(log)
-			wsSrv := orbital.NewWsConn(log)
-
-			// Prepare services
-			authSvc := auth.NewService(auth.Dependencies{
-				Log:      log,
-				UserRepo: &userRepo,
-				Ws:       wsSrv,
-			})
-
-			appsSvc := apps.NewService(apps.Dependencies{
-				Log:     log,
-				AppRepo: &appRepo,
-			})
-
-			machineSvc := machine.NewService(machine.Dependencies{
-				Log: log,
-				Ws:  wsSrv,
-			})
-
-			systemSvc := system.NewService(system.Dependencies{
-				Log: log,
-				Ws:  wsSrv,
-			})
-
-			// Register all service to server
-			auth.RegisterAuthServiceServer(apiSrv, wsSrv, authSvc)
-			apps.RegisterAppsServiceServer(apiSrv, wsSrv, appsSvc)
-			machine.RegisterMachineServiceServer(apiSrv, wsSrv, machineSvc)
-			system.RegisterSystemServiceServer(apiSrv, wsSrv, systemSvc)
-
-			// Boot Orbital
-			orbitalCfg := orbital.Config{
-				ApiServer: apiSrv,
-				WsServer:  wsSrv,
-				Addr:      cfg.Addr,
-				Cfg:       cfg,
-				Logger:    log,
-			}
-
-			orbitalNode, err := orbital.New(orbitalCfg)
+			httpSvc, err := buildHTTPService(cfg)
 			if err != nil {
+				prompt.Err("\ncannot setup http: %s", err.Error())
 				return err
 			}
-			
-			if err = orbitalNode.Start(); err != nil {
-				return err
-			}
-			return nil
+
+			wsDisp := httpSvc.Dispatcher()
+
+			authSvc := auth.NewService(auth.Dependencies{Log: log, UserRepo: &userRepo, Ws: wsDisp})
+			appsSvc := apps.NewService(apps.Dependencies{Log: log, AppRepo: &appRepo})
+			machineSvc := machine.NewService(machine.Dependencies{Log: log, Ws: wsDisp})
+			systemSvc := system.NewService(system.Dependencies{Log: log, Ws: wsDisp})
+
+			auth.RegisterAuthServiceServer(httpSvc, authSvc)
+			apps.RegisterAppsServiceServer(httpSvc, appsSvc)
+			machine.RegisterMachineServiceServer(httpSvc, machineSvc)
+			system.RegisterSystemServiceServer(httpSvc, httpSvc, systemSvc)
+
+			runtime := atomika.New()
+			runtime.RegisterServices([]atomika.Service{httpSvc})
+
+			return runtime.Boot()
 		},
 	}
 
-	startCmd.Flags().BoolVarP(&debug, "debug", "", false, "Debug mode")
-
-	return startCmd
+	cmd.Flags().BoolVarP(&debug, "debug", "", false, "Debug mode")
+	return cmd
 }
 
 func setupDB(cfg *config.Config) (*db.DB, error) {
 	dbPath := filepath.Join(cfg.OrbitalRootDir(), "data")
+	return db.NewDB(dbPath)
+}
 
-	dbConn, err := db.NewDB(dbPath)
+func buildHTTPService(cfg *config.Config) (*atomika.HTTPService, error) {
+	port := extractPort(cfg.Addr)
+	httpCfg := &atomika.CfgHttp{
+		Port:     port,
+		BasePath: "/rpc/",
+		WWW:      "orbital/web",
+		Websocket: &atomika.CfgWebsocket{
+			Enable: true,
+			Path:   "/ws",
+		},
+	}
+
+	svc, err := atomika.NewHTTPService(httpCfg)
 	if err != nil {
 		return nil, err
 	}
 
-	return dbConn, nil
+	svc.ConfigureWebsocket(httpCfg.Websocket, atomika.WithPingPong(), atomika.WithKeepAlive(60*time.Second))
+	return svc, nil
+}
+
+func extractPort(addr string) string {
+	_, port, err := net.SplitHostPort(addr)
+	if err != nil || port == "" {
+		return "8080"
+	}
+	return port
 }

@@ -2,6 +2,7 @@ package prompt
 
 import (
 	"fmt"
+
 	"github.com/fatih/color"
 )
 
@@ -14,38 +15,38 @@ const (
 	ColorWhite  ColorName = "white"
 )
 
-func Bold(colorName ColorName, msg string, args ...interface{}) {
+func Bold(colorName ColorName, msg string, args ...any) {
 	c := newColor(colorName)
 	line := c.Add(color.Bold)
 	_, _ = line.Printf(msg, args...)
 }
 
-func Info(msg string, args ...interface{}) {
+func Info(msg string, args ...any) {
 	white := newColor(ColorWhite)
 	_, _ = white.Printf(msg, args...)
 }
 
-func OK(msg string, args ...interface{}) {
+func OK(msg string, args ...any) {
 	green := newColor(ColorGreen)
 	_, _ = green.Printf(msg, args...)
 }
 
-func Warn(msg string, args ...interface{}) {
+func Warn(msg string, args ...any) {
 	yellow := newColor(ColorYellow)
 	_, _ = yellow.Printf(msg, args...)
 }
 
-func Err(msg string, args ...interface{}) {
+func Err(msg string, args ...any) {
 	red := newColor(ColorRed)
 	_, _ = red.Printf(msg, args...)
 }
 
-func NewLine(s string) string {
-	return fmt.Sprintf("\n%s", s)
+func NewLine(msg string, args ...any) string {
+	return "\n" + fmt.Sprintf(msg, args...)
 }
 
-func NewLineWithTab(s string) string {
-	return fmt.Sprintf("\n\t%s", s)
+func NewLineWithTab(msg string, args ...any) string {
+	return "\n\t" + fmt.Sprintf(msg, args...)
 }
 
 func newColor(c ColorName) *color.Color {

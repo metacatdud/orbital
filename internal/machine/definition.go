@@ -2,7 +2,7 @@ package machine
 
 import (
 	"context"
-	"orbital/orbital"
+	"orbital/pkg/transport"
 )
 
 type MachineService interface {
@@ -18,6 +18,6 @@ type SystemInfo map[string]any
 
 type AllDataResp struct {
 	SystemInfo *SystemInfo            `json:"systemInfo,omitempty"`
-	Code       orbital.Code           `json:"code"`
-	Error      *orbital.ErrorResponse `json:"error,omitempty"`
+	Code       transport.Code         `json:"code"`
+	Error      *transport.ErrorResponse `json:"error,omitempty"`
 }

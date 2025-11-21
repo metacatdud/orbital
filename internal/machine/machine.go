@@ -3,21 +3,23 @@ package machine
 import (
 	"context"
 	"orbital/config"
-	"orbital/orbital"
 	"orbital/pkg/cryptographer"
 	"orbital/pkg/jobber"
 	"orbital/pkg/logger"
+	"orbital/pkg/transport"
+
+	"atomika.io/atomika/atomika"
 )
 
 type Dependencies struct {
 	Log *logger.Logger
-	Ws  *orbital.WsConn
+	Ws  atomika.WSDispatcher
 }
 
 type Machine struct {
 	jr  *jobber.Runner
 	log *logger.Logger
-	ws  *orbital.WsConn
+	ws  atomika.WSDispatcher
 }
 
 func NewService(deps Dependencies) *Machine {
@@ -53,63 +55,68 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 
 	body := &AllDataResp{}
 
-	info, err := getInfo()
-	if err != nil {
-		body.Code = orbital.Internal
-		body.Error = &orbital.ErrorResponse{
-			Type: "machine.stats.err",
-			Msg:  err.Error(),
+		info, err := getInfo()
+		if err != nil {
+			body.Code = transport.Internal
+			body.Error = &transport.ErrorResponse{
+				Type: "machine.stats.err",
+				Msg:  err.Error(),
+			}
+
+			msg, _ := cryptographer.Encode(sk, meta, body)
+			serialized, _ := msg.Serialize()
+			service.ws.Broadcast(ctx, serialized)
 		}
 
-		msg, _ := cryptographer.Encode(sk, meta, body)
-		service.ws.Broadcast(ctx, *msg)
-	}
+		cpu, err := getCPUInfo()
+		if err != nil {
+			body.Code = transport.Internal
+			body.Error = &transport.ErrorResponse{
+				Type: "machine.stats.err",
+				Msg:  err.Error(),
+			}
 
-	cpu, err := getCPUInfo()
-	if err != nil {
-		body.Code = orbital.Internal
-		body.Error = &orbital.ErrorResponse{
-			Type: "machine.stats.err",
-			Msg:  err.Error(),
+			msg, _ := cryptographer.Encode(sk, meta, body)
+			serialized, _ := msg.Serialize()
+			service.ws.Broadcast(ctx, serialized)
 		}
 
-		msg, _ := cryptographer.Encode(sk, meta, body)
-		service.ws.Broadcast(ctx, *msg)
-	}
-
-	mem, err := getMemInfo()
-	if err != nil {
-		body.Code = orbital.Internal
-		body.Error = &orbital.ErrorResponse{
-			Type: "machine.stats.err",
-			Msg:  err.Error(),
-		}
-		msg, _ := cryptographer.Encode(sk, meta, body)
-		service.ws.Broadcast(ctx, *msg)
-	}
-
-	netwk, err := getNetworkInfo()
-	if err != nil {
-		body.Code = orbital.Internal
-		body.Error = &orbital.ErrorResponse{
-			Type: "machine.stats.err",
-			Msg:  err.Error(),
+		mem, err := getMemInfo()
+		if err != nil {
+			body.Code = transport.Internal
+			body.Error = &transport.ErrorResponse{
+				Type: "machine.stats.err",
+				Msg:  err.Error(),
+			}
+			msg, _ := cryptographer.Encode(sk, meta, body)
+			serialized, _ := msg.Serialize()
+			service.ws.Broadcast(ctx, serialized)
 		}
 
-		msg, _ := cryptographer.Encode(sk, meta, body)
-		service.ws.Broadcast(ctx, *msg)
-	}
+		netwk, err := getNetworkInfo()
+		if err != nil {
+			body.Code = transport.Internal
+			body.Error = &transport.ErrorResponse{
+				Type: "machine.stats.err",
+				Msg:  err.Error(),
+			}
 
-	disk, err := getDiskInfo()
-	if err != nil {
-		body.Code = orbital.Internal
-		body.Error = &orbital.ErrorResponse{
-			Type: "machine.stats.err",
-			Msg:  err.Error(),
+			msg, _ := cryptographer.Encode(sk, meta, body)
+			serialized, _ := msg.Serialize()
+			service.ws.Broadcast(ctx, serialized)
 		}
-		msg, _ := cryptographer.Encode(sk, meta, body)
-		service.ws.Broadcast(ctx, *msg)
-	}
+
+		disk, err := getDiskInfo()
+		if err != nil {
+			body.Code = transport.Internal
+			body.Error = &transport.ErrorResponse{
+				Type: "machine.stats.err",
+				Msg:  err.Error(),
+			}
+			msg, _ := cryptographer.Encode(sk, meta, body)
+			serialized, _ := msg.Serialize()
+			service.ws.Broadcast(ctx, serialized)
+		}
 
 	stats := &SystemInfo{
 		"info":  info,
@@ -119,11 +126,12 @@ func (service *Machine) JobAllData(ctx context.Context, req AllDataReq) error {
 		"net":   netwk,
 	}
 
-	body.Code = orbital.OK
+	body.Code = transport.OK
 	body.SystemInfo = stats
 
 	msg, _ := cryptographer.Encode(sk, meta, body)
-	service.ws.Broadcast(ctx, *msg)
+	serialized, _ := msg.Serialize()
+	service.ws.Broadcast(ctx, serialized)
 
 	return nil
 }

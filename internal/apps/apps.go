@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"orbital/domain"
-	"orbital/orbital"
 	"orbital/pkg/logger"
+	"orbital/pkg/transport"
 )
 
 const (
@@ -31,7 +31,6 @@ func NewService(deps Dependencies) *Apps {
 }
 
 func (service *Apps) List(_ context.Context, _ ListReq) (*ListResp, error) {
-
 	var (
 		dbApps domain.Apps
 		err    error
@@ -55,7 +54,7 @@ func (service *Apps) List(_ context.Context, _ ListReq) (*ListResp, error) {
 	}
 
 	return &ListResp{
-		Code: orbital.OK,
+		Code: transport.OK,
 		Apps: apps,
 	}, nil
 }

@@ -42,7 +42,7 @@ type User struct {
 
 func (srv *AuthService) Login(req LoginReq) (*LoginRes, error) {
 
-	api := transport.NewAPI("rpc/AuthService/Auth")
+	api := transport.NewAPI("/rpc/AuthService/Auth")
 	api.WithMiddleware(transport.VerifyAndUnwrap)
 
 	sk, err := cryptographer.NewPrivateKeyFromHex(req.SecretKey)
@@ -132,7 +132,7 @@ func (srv *AuthService) CheckKey(_ CheckKeyReq) (*CheckKeyRes, error) {
 		return &CheckKeyRes{Code: transport.Unauthenticated}, nil
 	}
 
-	api := transport.NewAPI("rpc/AuthService/Check")
+	api := transport.NewAPI("/rpc/AuthService/Check")
 	api.WithMiddleware(transport.VerifyAndUnwrap)
 
 	msg, err := cryptographer.Encode(sk, cryptographer.Metadata{

@@ -2,60 +2,54 @@ package apps
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 	"orbital/config"
-	"orbital/orbital"
 	"orbital/pkg/cryptographer"
+	"orbital/pkg/transport"
+
+	"atomika.io/atomika/atomika"
 )
 
 type appsServiceServer struct {
-	server  orbital.HTTPService
+	server  *atomika.HTTPService
 	service AppsService
 }
 
-func RegisterAppsServiceServer(server orbital.HTTPService, _ orbital.WsService, service AppsService) {
+func RegisterAppsServiceServer(server *atomika.HTTPService, service AppsService) {
 	handler := &appsServiceServer{
 		server:  server,
 		service: service,
 	}
 
-	server.Register(orbital.Route{
+	server.Register(atomika.Route{
 		ServiceName: "AppsService",
 		ActionName:  "List",
 		Handler:     handler.handleList,
-		Method:      http.MethodPost,
 	})
 }
 
 func (s *appsServiceServer) handleList(w http.ResponseWriter, r *http.Request) {
-	body, ok := r.Context().Value(cryptographer.BodyCtxKey).([]byte)
-	if !ok {
-		s.server.OnError(w, r, errors.New("cannot decode body"))
-		return
-	}
-
 	var req ListReq
-	if err := json.Unmarshal(body, &req); err != nil {
-		s.server.OnError(w, r, err)
+	if err := transport.Decode(r.Body, &req); err != nil {
+		_ = transport.Encode(w, r, http.StatusBadRequest, transport.ErrorResponse{Type: "apps.bad_request", Msg: err.Error()})
 		return
 	}
 
 	res, err := s.service.List(r.Context(), req)
 	if err != nil {
-		s.server.OnError(w, r, err)
+		_ = transport.Encode(w, r, http.StatusInternalServerError, transport.ErrorResponse{Type: "apps.error", Msg: err.Error()})
 		return
 	}
 
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		s.server.OnError(w, r, err)
+		_ = transport.Encode(w, r, http.StatusInternalServerError, transport.ErrorResponse{Type: "apps.config", Msg: err.Error()})
 		return
 	}
 
 	sk, err := cryptographer.NewPrivateKeyFromHex(cfg.SecretKey)
 	if err != nil {
-		s.server.OnError(w, r, err)
+		_ = transport.Encode(w, r, http.StatusInternalServerError, transport.ErrorResponse{Type: "apps.key", Msg: err.Error()})
 		return
 	}
 
@@ -65,8 +59,7 @@ func (s *appsServiceServer) handleList(w http.ResponseWriter, r *http.Request) {
 		Tags:   nil,
 	}, res)
 
-	if err = orbital.Encode(w, r, http.StatusOK, orbitalMessage); err != nil {
-		s.server.OnError(w, r, err)
-		return
-	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	enc := json.NewEncoder(w)
+	_ = enc.Encode(orbitalMessage)
 }

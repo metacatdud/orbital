@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"fmt"
-	"github.com/spf13/cobra"
 	"io/fs"
+
+	"github.com/spf13/cobra"
 	"orbital/pkg/prompt"
 )
 
@@ -11,27 +11,26 @@ type Dependencies struct {
 	FS fs.FS
 }
 
-var rootCmd = &cobra.Command{
-	Use:   "orbital",
-	Short: "orbital - container orchestration made simple",
-	Long:  "orbital is a container orchestration system without the bloat",
-}
-
 func Execute(deps Dependencies) error {
-	rootCmd.AddCommand(newInitCmd(deps))
-	rootCmd.AddCommand(newUpdateCmd(deps))
-	rootCmd.AddCommand(newKeygenCmd())
-	rootCmd.AddCommand(newStartCmd())
-
-	if err := rootCmd.Execute(); err != nil {
-		return err
+	cmd := &cobra.Command{
+		Use:           "orbital",
+		Short:         "orbital CLI",
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
 
+	cmd.AddCommand(newInitCmd(deps))
+	cmd.AddCommand(newUpdateCmd(deps))
+	cmd.AddCommand(newKeygenCmd())
+	cmd.AddCommand(newStartCmd())
+
+	if _, err := cmd.ExecuteC(); err != nil {
+		return err
+	}
 	return nil
 }
 
 func cmdHeader(section string) {
-	prompt.Bold(prompt.ColorWhite, prompt.NewLine("Orbital |- %s"), section)
-	prompt.Info(prompt.NewLine("----------------------------------------------------------------"))
-	fmt.Println()
+	prompt.Bold(prompt.ColorWhite, "\nOrbital |- %s\n", section)
+	prompt.Info("----------------------------------------------------------------\n")
 }

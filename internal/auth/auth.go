@@ -3,8 +3,10 @@ package auth
 import (
 	"context"
 	"orbital/domain"
-	"orbital/orbital"
 	"orbital/pkg/logger"
+	"orbital/pkg/transport"
+
+	"atomika.io/atomika/atomika"
 )
 
 const (
@@ -16,14 +18,14 @@ const (
 type Dependencies struct {
 	Log      *logger.Logger
 	UserRepo *domain.UserRepository
-	Ws       *orbital.WsConn
+	Ws       atomika.WSDispatcher
 }
 
 type Auth struct {
 	log *logger.Logger
 
 	userRepo *domain.UserRepository
-	ws       *orbital.WsConn
+	ws       atomika.WSDispatcher
 }
 
 func NewService(deps Dependencies) *Auth {
@@ -39,8 +41,8 @@ func (service *Auth) Auth(ctx context.Context, req AuthReq) (*AuthResp, error) {
 	userRepo, err := service.userRepo.GetByPublicKey(req.PublicKey)
 	if err != nil {
 		return &AuthResp{
-			Code: orbital.NotFound,
-			Error: &orbital.ErrorResponse{
+			Code: transport.NotFound,
+			Error: &transport.ErrorResponse{
 				Type: "auth.notfound",
 				Msg:  "unknown secret key",
 			},
@@ -55,7 +57,7 @@ func (service *Auth) Auth(ctx context.Context, req AuthReq) (*AuthResp, error) {
 	}
 
 	return &AuthResp{
-		Code: orbital.OK,
+		Code: transport.OK,
 		User: user,
 	}, nil
 
@@ -64,7 +66,7 @@ func (service *Auth) Auth(ctx context.Context, req AuthReq) (*AuthResp, error) {
 func (service *Auth) Check(ctx context.Context, req CheckReq) (*CheckResp, error) {
 	// TODO :Check with database
 	return &CheckResp{
-		Code: orbital.OK,
+		Code: transport.OK,
 	}, nil
 
 }

@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"orbital/orbital"
+	"orbital/pkg/transport"
 )
 
 type AuthService interface {
@@ -22,13 +22,13 @@ type AuthReq struct {
 }
 
 type AuthResp struct {
-	User  *User                  `json:"user"`
-	Code  orbital.Code           `json:"code"`
-	Error *orbital.ErrorResponse `json:"error,omitempty"`
+	User  *User                 `json:"user"`
+	Code  transport.Code        `json:"code"`
+	Error *transport.ErrorResponse `json:"error,omitempty"`
 }
 
 type CheckReq struct{}
 type CheckResp struct {
-	Code  orbital.Code           `json:"code"`
-	Error *orbital.ErrorResponse `json:"error,omitempty"`
+	Code  transport.Code        `json:"code"`
+	Error *transport.ErrorResponse `json:"error,omitempty"`
 }

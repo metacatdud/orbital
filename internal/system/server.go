@@ -4,26 +4,27 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"orbital/orbital"
+
+	"atomika.io/atomika/atomika"
 )
 
 type systemServiceServer struct {
 	service SystemService
 }
 
-func RegisterSystemServiceServer(_ orbital.HTTPService, wsServer orbital.WsService, service SystemService) {
+func RegisterSystemServiceServer(_ *atomika.HTTPService, wsServer *atomika.HTTPService, service SystemService) {
 	h := &systemServiceServer{
 		service: service,
 	}
 
-	wsServer.Register(orbital.Topic{
-		Name:    "system/keepAlivePing",
+	wsServer.RegisterTopic(atomika.WSTopic{
+		Name: "system/keepAlivePing",
 		Handler: h.handleWsConnectionKeepAlive,
 	})
 
-	wsServer.Register(orbital.Topic{
+	wsServer.RegisterTopic(atomika.WSTopic{
 		Name: "system/keepAlivePong",
-		Handler: func(ctx context.Context, connID string, data []byte) {
+		Handler: func(ctx context.Context, connID string, _ []byte) {
 			log.Printf("[!] keep alive pong: %s", connID)
 		},
 	})
