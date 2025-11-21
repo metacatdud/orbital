@@ -1,20 +1,17 @@
 package machine
 
-import "orbital/orbital"
+import (
+	"atomika.io/atomika/atomika"
+)
 
 type machineServiceServer struct {
-	server  orbital.HTTPService
+	server  *atomika.HTTPService
 	service MachineService
 }
 
-func RegisterMachineServiceServer(server orbital.HTTPService, wsServer orbital.WsService, service MachineService) {
+func RegisterMachineServiceServer(server *atomika.HTTPService, service MachineService) {
 	_ = &machineServiceServer{
 		server:  server,
 		service: service,
 	}
-
-	wsServer.Register(orbital.Topic{
-		Name:    "",
-		Handler: nil,
-	})
 }

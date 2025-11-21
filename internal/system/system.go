@@ -3,9 +3,11 @@ package system
 import (
 	"context"
 	"orbital/config"
-	"orbital/orbital"
 	"orbital/pkg/cryptographer"
 	"orbital/pkg/logger"
+	"orbital/pkg/transport"
+
+	"atomika.io/atomika/atomika"
 )
 
 const (
@@ -17,12 +19,12 @@ const (
 
 type Dependencies struct {
 	Log *logger.Logger
-	Ws  *orbital.WsConn
+	Ws  atomika.WSDispatcher
 }
 
 type System struct {
 	log *logger.Logger
-	ws  *orbital.WsConn
+	ws  atomika.WSDispatcher
 }
 
 func NewService(deps Dependencies) *System {
@@ -49,12 +51,17 @@ func (s *System) ConnectionKeepAlive(ctx context.Context, req ConnectionKeepAliv
 	}
 
 	msg, _ := cryptographer.Encode(sk, meta, ConnectionKeepAliveRes{
-		Code: orbital.OK,
+		Code: transport.OK,
 	})
 
 	s.log.Debug("keep alive pong", "connId", req.ConnID)
 
-	if err = s.ws.SendTo(ctx, req.ConnID, *msg); err != nil {
+	serialized, err := msg.Serialize()
+	if err != nil {
+		return err
+	}
+
+	if err = s.ws.SendTo(ctx, req.ConnID, serialized); err != nil {
 		return err
 	}
 

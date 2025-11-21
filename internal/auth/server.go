@@ -1,120 +1,104 @@
 package auth
 
 import (
-	"errors"
+	"encoding/json"
 	"net/http"
 	"orbital/config"
-	"orbital/orbital"
 	"orbital/pkg/cryptographer"
+	"orbital/pkg/transport"
+
+	"atomika.io/atomika/atomika"
 )
 
 type authServiceServer struct {
-	server  orbital.HTTPService
+	server  *atomika.HTTPService
 	service AuthService
 }
 
-func RegisterAuthServiceServer(server orbital.HTTPService, _ orbital.WsService, service AuthService) {
+func RegisterAuthServiceServer(server *atomika.HTTPService, service AuthService) {
 	handler := &authServiceServer{
 		server:  server,
 		service: service,
 	}
 
-	// Register middleware if any.
-	// [!] These will be attached to all routes
-	server.Use(
-		MessageDecode(),
-		ValidateRole(),
-	)
-
-	// Register routes
-	server.Register(orbital.Route{
+	server.Register(atomika.Route{
 		ServiceName: "AuthService",
 		ActionName:  "Auth",
 		Handler:     handler.handleAuthentication,
-		Method:      http.MethodPost,
 	})
 
-	server.Register(orbital.Route{
+	server.Register(atomika.Route{
 		ServiceName: "AuthService",
 		ActionName:  "Check",
 		Handler:     handler.handleCheckKey,
-		Method:      http.MethodPost,
 	})
 }
 
 func (s *authServiceServer) handleAuthentication(w http.ResponseWriter, r *http.Request) {
-
-	publicKey, ok := r.Context().Value(cryptographer.PublicKeyCtxKey).(string)
-	if !ok {
-		s.server.OnError(w, r, errors.New("cannot decode body"))
+	var req AuthReq
+	if err := transport.Decode(r.Body, &req); err != nil {
+		_ = transport.Encode(w, r, http.StatusBadRequest, transport.ErrorResponse{Type: "auth.bad_request", Msg: err.Error()})
 		return
 	}
 
-	res, err := s.service.Auth(r.Context(), AuthReq{
-		PublicKey: publicKey,
-	})
+	res, err := s.service.Auth(r.Context(), req)
 	if err != nil {
-		s.server.OnError(w, r, err)
+		_ = transport.Encode(w, r, http.StatusInternalServerError, transport.ErrorResponse{Type: "auth.error", Msg: err.Error()})
 		return
 	}
 
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		s.server.OnError(w, r, err)
+		_ = transport.Encode(w, r, http.StatusInternalServerError, transport.ErrorResponse{Type: "auth.config", Msg: err.Error()})
 		return
 	}
 
 	sk, err := cryptographer.NewPrivateKeyFromHex(cfg.SecretKey)
 	if err != nil {
-		s.server.OnError(w, r, err)
+		_ = transport.Encode(w, r, http.StatusInternalServerError, transport.ErrorResponse{Type: "auth.key", Msg: err.Error()})
 		return
 	}
 
 	orbitalMessage, _ := cryptographer.Encode(sk, cryptographer.Metadata{
 		Domain:        Domain,
 		Action:        ActionLogin,
-		CorrelationID: publicKey,
+		CorrelationID: req.PublicKey,
 	}, res)
 
-	if err = orbital.Encode(w, r, http.StatusOK, orbitalMessage); err != nil {
-		s.server.OnError(w, r, err)
-		return
-	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	enc := json.NewEncoder(w)
+	_ = enc.Encode(orbitalMessage)
 }
 
 func (s *authServiceServer) handleCheckKey(w http.ResponseWriter, r *http.Request) {
-	publicKey, ok := r.Context().Value(cryptographer.PublicKeyCtxKey).(string)
-	if !ok {
-		s.server.OnError(w, r, errors.New("cannot decode body"))
-		return
-	}
+	var req CheckReq
+	_ = transport.Decode(r.Body, &req)
 
-	res, err := s.service.Check(r.Context(), CheckReq{})
+	res, err := s.service.Check(r.Context(), req)
 	if err != nil {
-		s.server.OnError(w, r, err)
+		_ = transport.Encode(w, r, http.StatusInternalServerError, transport.ErrorResponse{Type: "auth.error", Msg: err.Error()})
 		return
 	}
 
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		s.server.OnError(w, r, err)
+		_ = transport.Encode(w, r, http.StatusInternalServerError, transport.ErrorResponse{Type: "auth.config", Msg: err.Error()})
 		return
 	}
 
 	sk, err := cryptographer.NewPrivateKeyFromHex(cfg.SecretKey)
 	if err != nil {
-		s.server.OnError(w, r, err)
+		_ = transport.Encode(w, r, http.StatusInternalServerError, transport.ErrorResponse{Type: "auth.key", Msg: err.Error()})
 		return
 	}
 
 	orbitalMessage, _ := cryptographer.Encode(sk, cryptographer.Metadata{
 		Domain:        Domain,
 		Action:        ActionCheck,
-		CorrelationID: publicKey,
+		CorrelationID: "",
 	}, res)
 
-	if err = orbital.Encode(w, r, http.StatusOK, orbitalMessage); err != nil {
-		s.server.OnError(w, r, err)
-		return
-	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	enc := json.NewEncoder(w)
+	_ = enc.Encode(orbitalMessage)
 }

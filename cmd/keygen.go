@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"encoding/hex"
-	"fmt"
 	"orbital/pkg/cryptographer"
 	"orbital/pkg/prompt"
 
@@ -10,8 +9,7 @@ import (
 )
 
 func newKeygenCmd() *cobra.Command {
-
-	keygenCmd := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "keygen",
 		Short: "Generate a new private key",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -20,15 +18,11 @@ func newKeygenCmd() *cobra.Command {
 				return err
 			}
 
-			cmdHeader("keygen")
-
-			prompt.Err(prompt.NewLine("- Secret key: %s [DO NOT SHARE AND KEEP IT SAFE]"), hex.EncodeToString(sk.Seed()))
-			prompt.Info(prompt.NewLine("- Public key: %s"), pk.ToHex())
-
-			fmt.Println()
+			prompt.OK("Secret key: %s\n", hex.EncodeToString(sk.Seed()))
+			prompt.Info("Public key: %s\n", pk.ToHex())
 			return nil
 		},
 	}
 
-	return keygenCmd
+	return cmd
 }

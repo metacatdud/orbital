@@ -57,7 +57,7 @@ func (srv *AppsService) List(req ListReq) (*ListRes, error) {
 		return nil, err
 	}
 
-	api := transport.NewAPI("rpc/AppsService/List")
+	api := transport.NewAPI("/rpc/AppsService/List")
 	api.WithMiddleware(transport.VerifyAndUnwrap)
 
 	msg, err := cryptographer.Encode(sk, cryptographer.Metadata{

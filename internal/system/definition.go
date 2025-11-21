@@ -2,7 +2,7 @@ package system
 
 import (
 	"context"
-	"orbital/orbital"
+	"orbital/pkg/transport"
 )
 
 type SystemService interface {
@@ -14,6 +14,6 @@ type ConnectionKeepAliveReq struct {
 }
 
 type ConnectionKeepAliveRes struct {
-	Code  orbital.Code           `json:"code"`
-	Error *orbital.ErrorResponse `json:"error,omitempty"`
+	Code  transport.Code         `json:"code"`
+	Error *transport.ErrorResponse `json:"error,omitempty"`
 }

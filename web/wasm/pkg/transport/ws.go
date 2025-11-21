@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"math/rand"
 	"orbital/pkg/cryptographer"
-	"orbital/web/wasm/pkg/dom"
+	"orbital//rpc/pkg/dom"
 	"sync"
 	"syscall/js"
 	"time"

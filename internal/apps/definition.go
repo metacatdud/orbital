@@ -2,7 +2,7 @@ package apps
 
 import (
 	"context"
-	"orbital/orbital"
+	"orbital/pkg/transport"
 )
 
 type AppsService interface {
@@ -27,7 +27,7 @@ type App struct {
 type ListReq struct{}
 
 type ListResp struct {
-	Code  orbital.Code           `json:"code"`
-	Error *orbital.ErrorResponse `json:"error,omitempty"`
-	Apps  []App                  `json:"apps"`
+	Code  transport.Code          `json:"code"`
+	Error *transport.ErrorResponse `json:"error,omitempty"`
+	Apps  []App                   `json:"apps"`
 }
