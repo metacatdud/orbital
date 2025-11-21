@@ -1,3 +1,24 @@
+## v0.5.0 (2025-11-21)
+
+### Feat
+
+- websocket now support keep alive and welcome
+- refactor bootstrap and log levels
+
+### Fix
+
+- main bootstrap passes server sk to dependencies
+- timestamp inconsistency
+- syscheck will check golang 1.24 or higher
+
+### Refactor
+
+- removed component registry
+- revert config from user space to etc
+- keys creation simplified
+- keys generation simplification
+- remove tls support
+
 ## v0.4.1 (2025-08-19)
 
 ### Fix
